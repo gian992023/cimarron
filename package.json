@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "node servidor.mjs",
-    "dev": "node --watch servidor.mjs"
+    "dev": "node --watch servidor.mjs",
+    "build:docs": "node scripts/build-docs.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0"
