@@ -79,10 +79,16 @@ writeFileSync(
 copyFileSync(join(WEB, 'estilos.css'), join(DOCS, 'estilos.css'));
 copyFileSync(join(WEB, 'app.js'), join(DOCS, 'app.js'));
 
-/* 5. index.html con rutas relativas + carga de datos.js antes de app.js. */
+/* 5. index.html con rutas relativas + carga de datos.js antes de app.js.
+      Se versionan los assets con ?v=<timestamp>: GitHub Pages cachea ~10 min,
+      y sin esto cada deploy tardaba en verse (o mezclaba HTML nuevo con CSS viejo). */
+const v = Date.now().toString(36);
 let html = readFileSync(join(WEB, 'index.html'), 'utf8')
-  .replace('href="/estilos.css"', 'href="estilos.css"')
-  .replace('<script src="/app.js"></script>', '<script src="datos.js"></script>\n<script src="app.js"></script>');
+  .replace('href="/estilos.css"', `href="estilos.css?v=${v}"`)
+  .replace(
+    '<script src="/app.js"></script>',
+    `<script src="datos.js?v=${v}"></script>\n<script src="app.js?v=${v}"></script>`,
+  );
 writeFileSync(join(DOCS, 'index.html'), html);
 
 /* 6. Copia el QR de Bre-B si ya existe en assets/. */
