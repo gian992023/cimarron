@@ -1,0 +1,17 @@
+{
+  "name": "cimarron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agente de IA para la cadena productiva y cultural no petrolera de Casanare",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node servidor.mjs",
+    "dev": "node --watch servidor.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0"
+  }
+}

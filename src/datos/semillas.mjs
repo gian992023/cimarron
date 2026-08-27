@@ -1,0 +1,376 @@
+// SEMILLAS — el archivo de "entrenamiento" del agente.
+//
+// ESTE ES EL ARCHIVO QUE SE EDITA CON LA INFORMACIÓN REAL.
+// El agente no se reentrena: lee estos datos por sus herramientas. Cambiar un
+// registro aquí es cambiar lo que el agente sabe, al instante.
+//
+// Estructura por sector (los 3 sectores no petroleros priorizados en Casanare):
+//   comercio → tiendas y oficios locales. Flujo: PEDIDO (con domicilio y geocerca).
+//   turismo  → alojamiento, planes y pasadías. Flujo: RESERVA (fechas + personas).
+//   agro     → insumos y servicios de campo/veterinaria. Flujo: AGENDAMIENTO
+//              (fecha + finca/vereda; cobertura si el servicio va a domicilio).
+//
+// Un ITEM es `producto` o `servicio`:
+//   producto  → algo que se entrega (chinchorro, sal mineralizada, kit picnic).
+//   servicio  → algo que se presta. `modalidad`:
+//               'en_sitio'     el cliente va al negocio (hotel, safari, esterilización)
+//               'a_domicilio'  el negocio va al cliente (fumigación, inseminación)
+//
+// `certificacion` (opcional): al arrancar, el sistema emite el Sello Llanero del
+// ítem con esos datos y queda verificable de inmediato.
+//
+// Ubicaciones: usa las claves de REFERENCIAS_CASANARE (src/nucleo/geocerca.mjs)
+// o coordenadas {lat, lng} directas.
+
+export const NEGOCIOS = [
+  /* ============================ COMERCIO ============================ */
+  {
+    id: 'neg_moriche',
+    sector: 'comercio',
+    nombre: 'Tejidos El Moriche',
+    responsable: 'Ana Barrera',
+    municipio: 'Yopal',
+    telefono: '3001112233',
+    ubicacion: { lat: 5.3378, lng: -72.3959 },
+    radioCoberturaKm: 12,
+    descripcion: 'Chinchorros y hamacas tejidas a mano en fibra de moriche.',
+  },
+  {
+    id: 'neg_llanerita',
+    sector: 'comercio',
+    nombre: 'Asadero La Llanerita',
+    responsable: 'Gilberto Rey',
+    municipio: 'Yopal',
+    telefono: '3002223344',
+    ubicacion: { lat: 5.3268, lng: -72.4103 },
+    radioCoberturaKm: 8,
+    descripcion: 'Ternera a la llanera y hayacas, receta de hato.',
+  },
+  {
+    id: 'neg_corozo',
+    sector: 'comercio',
+    nombre: 'Lácteos El Corozo',
+    responsable: 'Nelson Cadena',
+    municipio: 'Aguazul',
+    telefono: '3004445566',
+    ubicacion: { lat: 5.1725, lng: -72.547 },
+    radioCoberturaKm: 25,
+    descripcion: 'Queso llanero y cuajada de finca, producción diaria.',
+  },
+
+  /* ============================ TURISMO ============================= */
+  {
+    id: 'neg_hato_aurora',
+    sector: 'turismo',
+    nombre: 'Hato La Aurora Experiencias',
+    responsable: 'Marcela Peña',
+    municipio: 'Paz de Ariporo',
+    telefono: '3103334455',
+    ubicacion: { lat: 5.8797, lng: -71.8917 },
+    radioCoberturaKm: 0, // el turista va al hato
+    descripcion: 'Safari de fauna llanera y hospedaje en hato ganadero de conservación.',
+  },
+  {
+    id: 'neg_casa_morichal',
+    sector: 'turismo',
+    nombre: 'Hotel Casa Morichal',
+    responsable: 'Patricia Vargas',
+    municipio: 'Yopal',
+    telefono: '3115556677',
+    ubicacion: { lat: 5.3378, lng: -72.3959 },
+    radioCoberturaKm: 0,
+    descripcion: 'Hotel familiar en el centro de Yopal, desayuno llanero incluido.',
+  },
+  {
+    id: 'neg_llano_aventura',
+    sector: 'turismo',
+    nombre: 'Llano Aventura Tours',
+    responsable: 'Camilo Pérez',
+    municipio: 'Yopal',
+    telefono: '3127778899',
+    ubicacion: { lat: 5.3236, lng: -72.4048 },
+    radioCoberturaKm: 0,
+    descripcion: 'Pasadías al río Cravo Sur, cabalgatas y planes de amanecer llanero.',
+  },
+
+  /* ========================== AGROPECUARIO ========================== */
+  {
+    id: 'neg_agropunto',
+    sector: 'agro',
+    nombre: 'Agropunto El Llano',
+    responsable: 'Jaime Roa',
+    municipio: 'Yopal',
+    telefono: '3138889900',
+    ubicacion: { lat: 5.3301, lng: -72.3872 },
+    radioCoberturaKm: 40, // hasta dónde llega el servicio de campo
+    descripcion: 'Insumos agrícolas y servicios de campo para fincas de la sabana.',
+  },
+  {
+    id: 'neg_san_roque',
+    sector: 'agro',
+    nombre: 'Veterinaria San Roque',
+    responsable: 'Luisa Cadena',
+    municipio: 'Yopal',
+    telefono: '3149990011',
+    ubicacion: { lat: 5.3452, lng: -72.4025 },
+    radioCoberturaKm: 15,
+    descripcion: 'Clínica veterinaria: pequeñas especies y visitas a finca.',
+  },
+  {
+    id: 'neg_insemllano',
+    sector: 'agro',
+    nombre: 'InsemLlano Genética',
+    responsable: 'Iván Torres',
+    municipio: 'Aguazul',
+    telefono: '3150001122',
+    ubicacion: { lat: 5.1725, lng: -72.547 },
+    radioCoberturaKm: 60,
+    descripcion: 'Mejoramiento genético bovino: inseminación y diagnóstico reproductivo.',
+  },
+];
+
+export const ITEMS = [
+  /* ============================ COMERCIO ============================ */
+  {
+    id: 'itm_chinchorro',
+    negocioId: 'neg_moriche',
+    tipo: 'producto',
+    nombre: 'Chinchorro de moriche',
+    precioCop: 180000,
+    unidad: 'unidad',
+    categoria: 'artesania',
+    diasElaboracion: 14,
+    descripcion: 'Chinchorro de dos plazas tejido a mano en fibra de moriche, con remate tradicional.',
+    certificacion: {
+      origen: 'Vereda La Niata, Yopal',
+      tecnica: 'Tejido manual en telar vertical',
+      materiales: 'Fibra de palma de moriche',
+    },
+  },
+  {
+    id: 'itm_sombrero',
+    negocioId: 'neg_moriche',
+    tipo: 'producto',
+    nombre: 'Sombrero llanero en palma',
+    precioCop: 95000,
+    unidad: 'unidad',
+    categoria: 'artesania',
+    diasElaboracion: 5,
+    descripcion: 'Sombrero tejido en palma con acabado tradicional del llano.',
+  },
+  {
+    id: 'itm_mamona',
+    negocioId: 'neg_llanerita',
+    tipo: 'producto',
+    nombre: 'Ternera a la llanera (porción)',
+    precioCop: 32000,
+    unidad: 'porcion',
+    categoria: 'gastronomia',
+    descripcion: 'Ternera asada a la vara con yuca, plátano y guacamole llanero.',
+  },
+  {
+    id: 'itm_hayaca',
+    negocioId: 'neg_llanerita',
+    tipo: 'producto',
+    nombre: 'Hayaca llanera',
+    precioCop: 12000,
+    unidad: 'unidad',
+    categoria: 'gastronomia',
+    descripcion: 'Hayaca de receta casanareña envuelta en hoja de plátano.',
+  },
+  {
+    id: 'itm_queso',
+    negocioId: 'neg_corozo',
+    tipo: 'producto',
+    nombre: 'Queso llanero de finca (libra)',
+    precioCop: 14000,
+    unidad: 'libra',
+    categoria: 'viveres',
+    descripcion: 'Queso salado elaborado el mismo día del ordeño.',
+    certificacion: {
+      origen: 'Finca El Corozo, Aguazul',
+      tecnica: 'Cuajado artesanal en frío',
+      materiales: 'Leche entera de vacas de sabana',
+    },
+  },
+  {
+    id: 'itm_cuajada',
+    negocioId: 'neg_corozo',
+    tipo: 'producto',
+    nombre: 'Cuajada fresca (libra)',
+    precioCop: 10000,
+    unidad: 'libra',
+    categoria: 'viveres',
+    descripcion: 'Cuajada de finca, textura suave, ideal con melao.',
+  },
+
+  /* ============================ TURISMO ============================= */
+  {
+    id: 'itm_safari',
+    negocioId: 'neg_hato_aurora',
+    tipo: 'servicio',
+    modalidad: 'en_sitio',
+    nombre: 'Safari llanero de un día',
+    precioCop: 220000,
+    unidad: 'persona',
+    categoria: 'planes',
+    descripcion: 'Recorrido guiado de avistamiento de chigüiros, venados y aves, con almuerzo de hato.',
+    certificacion: {
+      origen: 'Hato La Aurora, Paz de Ariporo',
+      tecnica: 'Turismo de naturaleza en hato ganadero activo',
+      sostenibilidad: 'Hato en modelo de conservación de fauna de sabana inundable',
+    },
+  },
+  {
+    id: 'itm_noche_hato',
+    negocioId: 'neg_hato_aurora',
+    tipo: 'servicio',
+    modalidad: 'en_sitio',
+    nombre: 'Noche en el hato (hospedaje + cena llanera)',
+    precioCop: 260000,
+    unidad: 'noche',
+    categoria: 'alojamiento',
+    descripcion: 'Habitación de hato con cena tradicional y contada de historias al caney.',
+  },
+  {
+    id: 'itm_hab_estandar',
+    negocioId: 'neg_casa_morichal',
+    tipo: 'servicio',
+    modalidad: 'en_sitio',
+    nombre: 'Habitación estándar',
+    precioCop: 120000,
+    unidad: 'noche',
+    categoria: 'alojamiento',
+    descripcion: 'Habitación doble con aire, baño privado y desayuno llanero.',
+  },
+  {
+    id: 'itm_hab_familiar',
+    negocioId: 'neg_casa_morichal',
+    tipo: 'servicio',
+    modalidad: 'en_sitio',
+    nombre: 'Habitación familiar (4 personas)',
+    precioCop: 190000,
+    unidad: 'noche',
+    categoria: 'alojamiento',
+    descripcion: 'Dos camas dobles, aire, desayuno llanero para cuatro.',
+  },
+  {
+    id: 'itm_pasadia_cravo',
+    negocioId: 'neg_llano_aventura',
+    tipo: 'servicio',
+    modalidad: 'en_sitio',
+    nombre: 'Pasadía río Cravo Sur con asado',
+    precioCop: 85000,
+    unidad: 'persona',
+    categoria: 'pasadias',
+    descripcion: 'Día de río con transporte desde Yopal, asado llanero y guía local.',
+  },
+  {
+    id: 'itm_amanecer',
+    negocioId: 'neg_llano_aventura',
+    tipo: 'servicio',
+    modalidad: 'en_sitio',
+    nombre: 'Amanecer llanero con cabalgata',
+    precioCop: 140000,
+    unidad: 'persona',
+    categoria: 'planes',
+    descripcion: 'Salida 4:30 am, cabalgata por la sabana, desayuno criollo y música llanera.',
+  },
+  {
+    id: 'itm_kit_picnic',
+    negocioId: 'neg_llano_aventura',
+    tipo: 'producto',
+    nombre: 'Kit picnic llanero',
+    precioCop: 45000,
+    unidad: 'unidad',
+    categoria: 'consumibles',
+    descripcion: 'Café de la región, pandeyuca, dulce de leche y frutas para llevar al plan.',
+  },
+
+  /* ========================== AGROPECUARIO ========================== */
+  {
+    id: 'itm_sal',
+    negocioId: 'neg_agropunto',
+    tipo: 'producto',
+    nombre: 'Sal mineralizada 8% (bulto 40 kg)',
+    precioCop: 145000,
+    unidad: 'bulto',
+    categoria: 'insumos',
+    descripcion: 'Suplemento mineral para bovinos en sabana, presentación 40 kg.',
+  },
+  {
+    id: 'itm_semilla',
+    negocioId: 'neg_agropunto',
+    tipo: 'producto',
+    nombre: 'Semilla pasto Brachiaria humidicola (kg)',
+    precioCop: 68000,
+    unidad: 'kg',
+    categoria: 'insumos',
+    descripcion: 'Semilla para renovación de praderas en suelos ácidos de sabana.',
+  },
+  {
+    id: 'itm_fumigacion',
+    negocioId: 'neg_agropunto',
+    tipo: 'servicio',
+    modalidad: 'a_domicilio',
+    nombre: 'Fumigación de potreros con dron',
+    precioCop: 90000,
+    unidad: 'hectarea',
+    categoria: 'servicios_campo',
+    descripcion: 'Aplicación aérea de herbicida o fertilizante foliar, programada por hectárea.',
+  },
+  {
+    id: 'itm_esterilizacion',
+    negocioId: 'neg_san_roque',
+    tipo: 'servicio',
+    modalidad: 'en_sitio',
+    nombre: 'Esterilización canina o felina',
+    precioCop: 130000,
+    unidad: 'animal',
+    categoria: 'veterinaria',
+    descripcion: 'Cirugía con valoración previa, anestesia y control post operatorio.',
+  },
+  {
+    id: 'itm_consulta_finca',
+    negocioId: 'neg_san_roque',
+    tipo: 'servicio',
+    modalidad: 'a_domicilio',
+    nombre: 'Consulta veterinaria a domicilio',
+    precioCop: 60000,
+    unidad: 'visita',
+    categoria: 'veterinaria',
+    descripcion: 'Visita del veterinario a casa o finca dentro del radio de cobertura.',
+  },
+  {
+    id: 'itm_ivermectina',
+    negocioId: 'neg_san_roque',
+    tipo: 'producto',
+    nombre: 'Ivermectina 1% (500 ml)',
+    precioCop: 55000,
+    unidad: 'unidad',
+    categoria: 'veterinaria',
+    descripcion: 'Antiparasitario de amplio espectro para bovinos.',
+  },
+  {
+    id: 'itm_inseminacion',
+    negocioId: 'neg_insemllano',
+    tipo: 'servicio',
+    modalidad: 'a_domicilio',
+    nombre: 'Inseminación artificial bovina',
+    precioCop: 180000,
+    unidad: 'animal',
+    categoria: 'genetica',
+    descripcion: 'Incluye pajilla de toro probado, termo de transporte y aplicación en finca.',
+  },
+  {
+    id: 'itm_ecografia',
+    negocioId: 'neg_insemllano',
+    tipo: 'servicio',
+    modalidad: 'a_domicilio',
+    nombre: 'Ecografía reproductiva bovina',
+    precioCop: 45000,
+    unidad: 'animal',
+    categoria: 'genetica',
+    descripcion: 'Diagnóstico de preñez y estado reproductivo con ecógrafo portátil.',
+  },
+];

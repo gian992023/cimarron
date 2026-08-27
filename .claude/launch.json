@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "cimarron",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["servidor.mjs"],
+      "port": 8787
+    }
+  ]
+}

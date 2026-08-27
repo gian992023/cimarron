@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CIMARRÓN · Comercio, Turismo y Agro de Casanare</title>
+  <link rel="stylesheet" href="/estilos.css" />
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="marca">
+    <span class="logo">C</span>
+    <div>
+      <h1>CIMARRÓN</h1>
+      <p>Comercio · Turismo · Agro del Casanare</p>
+    </div>
+  </div>
+  <nav class="nav-escritorio">
+    <button data-vista="explorar" class="nav-boton activo">Explorar</button>
+    <button data-vista="asistente" class="nav-boton">Asistente IA</button>
+    <button data-vista="verificar" class="nav-boton">Sello</button>
+    <button data-vista="solicitudes" class="nav-boton">Mis solicitudes</button>
+  </nav>
+  <div class="estado" id="estado">conectando...</div>
+</header>
+
+<main class="contenido">
+
+  <!-- ============ EXPLORAR ============ -->
+  <section class="vista activa" id="vista-explorar">
+    <div class="hero">
+      <div>
+        <h2>El llano, a un mensaje</h2>
+        <p>Compra, reserva y agenda con los negocios no petroleros de Casanare. O dile al asistente qué necesitas y él lo hace por ti.</p>
+      </div>
+      <button class="boton-hero" data-vista="asistente">💬 Hablar con CIMARRÓN</button>
+    </div>
+
+    <div class="sectores" id="sectores">
+      <button class="sector activo" data-sector="">Todos</button>
+      <button class="sector" data-sector="comercio">🧺 Comercio</button>
+      <button class="sector" data-sector="turismo">🌄 Turismo</button>
+      <button class="sector" data-sector="agro">🐂 Agro</button>
+    </div>
+
+    <div class="filtros">
+      <input id="buscar" type="search" placeholder="Buscar: chinchorro, safari, fumigación..." />
+      <div class="chips" id="chips-tipo">
+        <button class="chip activo" data-tipo="">Todo</button>
+        <button class="chip" data-tipo="producto">Productos</button>
+        <button class="chip" data-tipo="servicio">Servicios</button>
+      </div>
+    </div>
+
+    <div class="rejilla" id="rejilla"></div>
+  </section>
+
+  <!-- ============ ASISTENTE ============ -->
+  <section class="vista" id="vista-asistente">
+    <div class="panel-chat">
+      <div class="chat" id="chat"></div>
+      <div class="sugerencias" id="sugerencias"></div>
+      <form class="entrada" id="formulario-chat">
+        <input id="mensaje" type="text" autocomplete="off" placeholder="Escríbele a CIMARRÓN..." />
+        <button type="submit" id="enviar">Enviar</button>
+      </form>
+      <details class="traza-caja">
+        <summary>Ver lo que hizo el agente (herramientas ejecutadas)</summary>
+        <ol class="traza" id="traza"><li class="vacia">Todavía nada.</li></ol>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ VERIFICAR SELLO ============ -->
+  <section class="vista" id="vista-verificar">
+    <div class="tarjeta-centrada">
+      <h2>Verificar Sello Llanero</h2>
+      <p class="texto-tenue">Cada sello está encadenado criptográficamente al anterior. Si alguien alteró un registro, la verificación falla.</p>
+      <form id="formulario-sello" class="fila-form">
+        <input id="codigo-sello" type="text" placeholder="LLA-XXXXXX" autocomplete="off" />
+        <button type="submit">Verificar</button>
+      </form>
+      <div id="resultado-sello"></div>
+    </div>
+  </section>
+
+  <!-- ============ MIS SOLICITUDES ============ -->
+  <section class="vista" id="vista-solicitudes">
+    <div class="tarjeta-centrada">
+      <h2>Mis solicitudes</h2>
+      <p class="texto-tenue">Consulta tus pedidos, reservas y agendamientos con el teléfono que registraste.</p>
+      <form id="formulario-solicitudes" class="fila-form">
+        <input id="telefono-consulta" type="tel" placeholder="Tu teléfono (solo dígitos)" autocomplete="tel" />
+        <button type="submit">Consultar</button>
+      </form>
+      <div id="lista-solicitudes"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Navegación inferior (móvil) -->
+<nav class="nav-movil">
+  <button data-vista="explorar" class="activo"><span>🧭</span>Explorar</button>
+  <button data-vista="asistente"><span>💬</span>Asistente</button>
+  <button data-vista="verificar"><span>🛡️</span>Sello</button>
+  <button data-vista="solicitudes"><span>📋</span>Pedidos</button>
+</nav>
+
+<!-- Botón flotante del asistente (visible en Explorar) -->
+<button class="flotante" id="flotante" data-vista="asistente" title="Hablar con CIMARRÓN">💬</button>
+
+<!-- ============ MODAL DE ÍTEM ============ -->
+<div class="velo" id="velo" hidden>
+  <div class="modal" id="modal" role="dialog" aria-modal="true"></div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
