@@ -20,6 +20,11 @@
 
 * { box-sizing: border-box; }
 
+/* El atributo hidden SIEMPRE gana, aunque la clase defina display propio.
+   Sin esto, .velo { display:grid } pisa al hidden y el velo del modal queda
+   cubriendo (y oscureciendo) toda la página, bloqueando los clics. */
+[hidden] { display: none !important; }
+
 html, body { height: 100%; }
 
 body {
