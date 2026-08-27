@@ -81,6 +81,20 @@ Cuando actualices las semillas con información real, vuelve a correr `npm run b
 
 ---
 
+## Desplegar el servidor COMPLETO con IA (Render)
+
+Para tener la lógica original (agente de IA incluido) en una URL pública, el proyecto trae `render.yaml`:
+
+1. En [dashboard.render.com](https://dashboard.render.com): **New → Blueprint** → conectar `gian992023/cimarron`.
+2. Agregar la variable secreta `ANTHROPIC_API_KEY` en el dashboard.
+3. Listo: Render corre `node servidor.mjs` tal cual (proceso persistente, el mock en memoria funciona).
+
+Vercel y Netlify son serverless: cada petición puede caer en una instancia nueva y las solicitudes/sellos creados en vivo se perderían. Serán la opción correcta **cuando los datos pasen a Supabase** (ver hoja de ruta en `CONTEXTO.md`).
+
+Nota del plan gratuito de Render: el servicio se duerme tras ~15 min sin tráfico; abrir la URL unos minutos antes del pitch.
+
+---
+
 ## Estructura
 
 ```

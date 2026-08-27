@@ -1,0 +1,37 @@
+# Despliegue de CIMARRÓN COMPLETO (servidor + agente de IA) en Render.
+#
+# Por qué Render y no Vercel/Netlify para esta fase: nuestro backend es un
+# proceso Node persistente con datos en memoria (el mock). Vercel y Netlify son
+# serverless: cada petición puede caer en una instancia nueva y las solicitudes
+# y sellos emitidos en vivo se perderían entre peticiones. Render corre
+# `node servidor.mjs` tal cual, sin cambiar una línea.
+#
+# Pasos (una sola vez):
+#   1. dashboard.render.com → New → Blueprint → conectar el repo gian992023/cimarron
+#   2. En el servicio, agregar la variable de entorno ANTHROPIC_API_KEY (secreta)
+#   3. Ajustar BREB_LLAVE / BREB_TITULAR / WHATSAPP_SOPORTE si aplica
+#
+# Nota del plan gratuito: el servicio se duerme tras ~15 min sin tráfico y el
+# primer acceso tarda ~30-60 s en despertar. Para el pitch: abrir la URL unos
+# minutos antes de presentar.
+
+services:
+  - type: web
+    name: cimarron
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node servidor.mjs
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false # se ingresa a mano en el dashboard: nunca en el repo
+      - key: CIMARRON_MODELO
+        value: claude-opus-5
+      - key: CIMARRON_ESFUERZO
+        value: medium
+      - key: CIMARRON_ORIGEN_DATOS
+        value: memoria
+      - key: BREB_LLAVE
+        value: "@cimarron"
+      - key: BREB_TITULAR
+        value: CIMARRON
