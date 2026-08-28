@@ -5,7 +5,8 @@
       "name": "cimarron",
       "runtimeExecutable": "node",
       "runtimeArgs": ["servidor.mjs"],
-      "port": 8787
+      "port": 8787,
+      "autoPort": true
     }
   ]
 }

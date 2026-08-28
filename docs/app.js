@@ -131,6 +131,17 @@ const API = {
     return DATOS.negocios.filter((n) => !sector || n.sector === sector);
   },
 
+  // Un negocio con sus ítems: la hoja del negocio.
+  async negocio(id) {
+    if (!ESTATICO) return (await fetch(`/api/negocio/${encodeURIComponent(id)}`)).json();
+    const negocio = DATOS.negocios.find((n) => n.id === id);
+    if (!negocio) return { error: 'Negocio no encontrado' };
+    const items = DATOS.items
+      .filter((i) => i.negocioId === id && i.activo !== false)
+      .map((i) => ({ ...i, precio: i.precioCop == null ? 'A convenir' : _cop(i.precioCop) }));
+    return { negocio, items };
+  },
+
   async taxonomia() {
     if (!ESTATICO) return (await fetch('/api/taxonomia')).json();
     return { municipios: DATOS.municipios || {}, sectores: DATOS.categorias || {}, mapa: DATOS.mapa };
@@ -175,22 +186,30 @@ function _crearSolicitudLocal(c) {
     }
   }
 
+  // Entrega para comercio: enviar a la dirección del cliente o recoger en el local.
+  if (tipo === 'pedido' && c.entrega === 'domicilio' && !c.lugar) {
+    return { error: 'Para envío a domicilio indica tu dirección (barrio o municipio).' };
+  }
+
   const numero = ++_consecutivo;
-  const total = item.precioCop * cantidad;
+  const total = item.precioCop == null ? null : item.precioCop * cantidad;
   const referencia = `CIM-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  const montoTxt = total == null ? 'A convenir con el negocio' : _cop(total);
   const sol = {
     id: `sol_${numero}`, numero, tipo, itemId: item.id, itemNombre: item.nombre,
     negocioNombre: item.negocioNombre, cantidad, totalCop: total, cliente: c.cliente,
-    telefono, estado: { pedido: 'creado', reserva: 'solicitada', agendamiento: 'solicitado' }[tipo],
+    telefono, entrega: c.entrega || null, direccion: c.lugar || null,
+    estado: { pedido: 'creado', reserva: 'solicitada', agendamiento: 'solicitado' }[tipo],
     referenciaPago: referencia, creadoEn: new Date().toISOString(),
   };
   _solicitudesEstatico.push(sol);
 
   return {
-    solicitud: { ...sol, numeroLegible: _numero(tipo, numero), total: _cop(total), codigoSello: item.codigoSello },
+    solicitud: { ...sol, numeroLegible: _numero(tipo, numero), total: montoTxt, codigoSello: item.codigoSello },
     pago: {
       metodo: 'Bre-B', llave: DATOS.config.llave, titular: DATOS.config.titular, qr_url: DATOS.config.qr,
-      monto: _cop(total), montoCop: total, referencia, whatsappSoporte: null,
+      monto: montoTxt, montoCop: total, referencia, whatsappSoporte: null,
+      contraentrega: (DATOS.negocios.find((n) => n.id === item.negocioId)?.pago?.contraentrega) || false,
     },
     avisos,
   };
@@ -206,10 +225,13 @@ const estado = {
   categoria: '',
   busqueda: '',
   items: [],
+  negocios: [],
   vista: 'explorar',
   historial: [],
   chatOcupado: false,
 };
+
+const EMOJI_SECTOR = { comercio: '🧺', turismo: '🌄', agro: '🐂' };
 
 const EMOJI_CATEGORIA = {
   artesania: '🧵', gastronomia: '🍖', viveres: '🧀',
@@ -310,20 +332,153 @@ function pintarRejilla() {
   }
 }
 
+/* ================================================================ */
+/* Vitrina de NEGOCIOS + hoja del negocio                           */
+/* ================================================================ */
+
+async function cargarNegocios() {
+  let negs = [];
+  try {
+    negs = await API.negocios(estado.sector || undefined);
+  } catch { negs = []; }
+
+  const b = _normalizar(estado.busqueda);
+  estado.negocios = negs.filter((n) =>
+    (!estado.categoria || n.categoria === estado.categoria) &&
+    (!b || _normalizar(`${n.nombre} ${n.categoria} ${n.municipio} ${n.descripcion || ''}`).includes(b)));
+  pintarNegocios();
+}
+
+function pintarNegocios() {
+  const rejilla = $('rejilla');
+  rejilla.innerHTML = '';
+  if (!estado.negocios.length) {
+    rejilla.innerHTML = '<div class="nada">No hay negocios con ese filtro. Prueba otra búsqueda o el asistente.</div>';
+    return;
+  }
+  for (const n of estado.negocios) {
+    const t = document.createElement('button');
+    t.className = 'tarjeta tarjeta-negocio';
+    const portada = n.imagenUrl
+      ? `<div class="portada-img" style="background-image:url('${n.imagenUrl.replace(/'/g, "%27")}')">
+           <span class="chip-sector">${EMOJI_SECTOR[n.sector] || ''}</span>
+         </div>`
+      : `<div class="portada ${n.sector}">${EMOJI_SECTOR[n.sector] || '🏪'}</div>`;
+    t.innerHTML = `
+      ${portada}
+      <div class="cuerpo">
+        <h3></h3>
+        <div class="quien"></div>
+        <div class="pie">
+          <span class="categoria-pill"></span>
+          ${n.rating ? `<span class="rating">★ ${n.rating}</span>` : ''}
+        </div>
+      </div>`;
+    t.querySelector('h3').textContent = n.nombre;
+    t.querySelector('.quien').textContent = n.municipio + (n.direccion ? ` · ${n.direccion.split(',')[0]}` : '');
+    t.querySelector('.categoria-pill').textContent = n.categoria || n.sector;
+    t.addEventListener('click', () => abrirNegocio(n.id));
+    rejilla.appendChild(t);
+  }
+}
+
+const NOMBRE_ACCION = { pedido: 'Pedir', reserva: 'Reservar', agendamiento: 'Agendar' };
+
+async function abrirNegocio(id) {
+  const modal = $('modal');
+  modal.innerHTML = '<p class="texto-tenue" style="padding:20px">Cargando el negocio...</p>';
+  $('velo').hidden = false;
+
+  const { negocio: n, items, error } = await API.negocio(id);
+  if (error || !n) {
+    modal.innerHTML = `<div class="encabezado"><h3>No se pudo abrir</h3><button class="cerrar">✕</button></div>`;
+    modal.querySelector('.cerrar').addEventListener('click', cerrarModal);
+    return;
+  }
+
+  const badges = [];
+  if (n.entrega?.domicilio) badges.push('🛵 Domicilio');
+  if (n.entrega?.recoger) badges.push('🏬 Recoger en el local');
+  if (n.pago?.breb) badges.push('📲 Pago Bre-B');
+  if (n.pago?.contraentrega) badges.push('💵 Contra entrega');
+
+  const portada = n.imagenUrl
+    ? `<div class="hoja-portada" style="background-image:url('${n.imagenUrl.replace(/'/g, "%27")}')"></div>`
+    : `<div class="hoja-portada sinimg ${n.sector}">${EMOJI_SECTOR[n.sector] || '🏪'}</div>`;
+
+  const filasItems = items.length
+    ? items.map((it) => `
+        <div class="hoja-item" data-item="${it.id}">
+          <div class="hoja-item-info">
+            <div class="hoja-item-nombre"></div>
+            <div class="hoja-item-desc"></div>
+          </div>
+          <div class="hoja-item-accion">
+            <span class="hoja-precio">${it.precio}${it.precioCop != null ? ` <small>/ ${it.unidad}</small>` : ''}</span>
+            <button class="boton-mini" data-item="${it.id}">${NOMBRE_ACCION[it.flujo] || 'Solicitar'}</button>
+          </div>
+        </div>`).join('')
+    : '<p class="texto-tenue">Este negocio aún no tiene productos o servicios publicados.</p>';
+
+  modal.innerHTML = `
+    <button class="cerrar cerrar-flotante" aria-label="Cerrar">✕</button>
+    ${portada}
+    <div class="hoja-cuerpo">
+      <div class="hoja-cabecera">
+        <h3></h3>
+        ${n.rating ? `<span class="rating grande">★ ${n.rating}</span>` : ''}
+      </div>
+      <div class="hoja-meta">
+        <span class="categoria-pill"></span>
+        <span class="hoja-muni">📍 <span class="muni-txt"></span></span>
+      </div>
+      <p class="hoja-desc"></p>
+      <div class="hoja-datos"></div>
+      ${badges.length ? `<div class="hoja-badges">${badges.map((b) => `<span>${b}</span>`).join('')}</div>` : ''}
+      <h4 class="hoja-titulo-items">${n.sector === 'turismo' ? 'Disponibilidad' : n.sector === 'agro' ? 'Servicios e insumos' : 'Productos y servicios'}</h4>
+      <div class="hoja-items">${filasItems}</div>
+    </div>`;
+
+  modal.querySelector('h3').textContent = n.nombre;
+  modal.querySelector('.categoria-pill').textContent = n.categoria || n.sector;
+  modal.querySelector('.muni-txt').textContent = `${n.municipio}, Casanare` + (n.direccion ? ` · ${n.direccion}` : '');
+  modal.querySelector('.hoja-desc').textContent = n.descripcion || '';
+  const datos = [];
+  if (n.telefono) datos.push(`📞 ${n.telefono}`);
+  if (n.sitioWeb) datos.push(`🌐 ${n.sitioWeb}`);
+  if (n.habitaciones) datos.push(`🛏️ ${n.habitaciones} habitaciones`);
+  modal.querySelector('.hoja-datos').textContent = datos.join('   ');
+  items.forEach((it, k) => {
+    const fila = modal.querySelectorAll('.hoja-item')[k];
+    if (!fila) return;
+    fila.querySelector('.hoja-item-nombre').textContent = it.nombre;
+    fila.querySelector('.hoja-item-desc').textContent = it.descripcion || '';
+  });
+
+  modal.querySelector('.cerrar').addEventListener('click', cerrarModal);
+  modal.querySelectorAll('.boton-mini').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const it = items.find((x) => x.id === btn.dataset.item);
+      if (it) abrirModal(it, n);
+    });
+  });
+}
+
 // filtros
 document.querySelectorAll('.sector').forEach((b) => {
   b.addEventListener('click', async () => {
     document.querySelector('.sector.activo')?.classList.remove('activo');
     b.classList.add('activo');
     estado.sector = b.dataset.sector;
+    estado.categoria = '';
     await poblarCategorias();
-    cargarCatalogo();
+    cargarNegocios();
   });
 });
 
 $('filtro-categoria').addEventListener('change', (e) => {
   estado.categoria = e.target.value;
-  cargarCatalogo();
+  cargarNegocios();
 });
 
 document.querySelectorAll('#chips-tipo .chip').forEach((b) => {
@@ -331,7 +486,7 @@ document.querySelectorAll('#chips-tipo .chip').forEach((b) => {
     document.querySelector('#chips-tipo .chip.activo')?.classList.remove('activo');
     b.classList.add('activo');
     estado.tipo = b.dataset.tipo;
-    cargarCatalogo();
+    cargarNegocios();
   });
 });
 
@@ -340,7 +495,7 @@ $('buscar').addEventListener('input', (e) => {
   clearTimeout(temporizadorBusqueda);
   temporizadorBusqueda = setTimeout(() => {
     estado.busqueda = e.target.value.trim();
-    cargarCatalogo();
+    cargarNegocios();
   }, 250);
 });
 
@@ -361,15 +516,25 @@ function campo(id, etiqueta, tipo = 'text', extra = '') {
     <input id="${id}" type="${tipo}" ${extra} /></div>`;
 }
 
-function formularioPara(item) {
+function formularioPara(item, negocio) {
   const etiquetaCantidad = LABEL_CANTIDAD[item.unidad] || 'Cantidad';
   const comunes =
     campo('f-nombre', 'Tu nombre') +
     campo('f-telefono', 'Teléfono (para seguimiento)', 'tel', 'inputmode="numeric"');
 
   if (item.flujo === 'pedido') {
+    const esComercio = (negocio?.sector || item.sector) === 'comercio';
+    const entrega = esComercio
+      ? `<div class="campo"><label>¿Cómo lo quieres recibir?</label>
+           <div class="entrega-opciones">
+             <label class="radio"><input type="radio" name="entrega" value="recoger" checked/> Recoger en el local</label>
+             <label class="radio"><input type="radio" name="entrega" value="domicilio"/> Enviar a mi dirección</label>
+           </div></div>
+         <div class="campo" id="campo-direccion" hidden>${campo('f-lugar', 'Tu dirección (barrio o municipio)')}</div>`
+      : `<div class="campo">${campo('f-lugar', 'Barrio o municipio de entrega')}</div>`;
     return (
-      `<div class="dos-columnas">${campo('f-cantidad', etiquetaCantidad, 'number', 'min="1" value="1"')}${campo('f-lugar', 'Barrio o municipio de entrega')}</div>` +
+      campo('f-cantidad', etiquetaCantidad, 'number', 'min="1" value="1"') +
+      entrega +
       comunes
     );
   }
@@ -391,8 +556,9 @@ function formularioPara(item) {
   );
 }
 
-function abrirModal(item) {
+function abrirModal(item, negocio) {
   const modal = $('modal');
+  const precioUnidad = item.precioCop != null ? ` <small>/ ${item.unidad}</small>` : '';
   modal.innerHTML = `
     <div class="encabezado">
       <div>
@@ -403,12 +569,12 @@ function abrirModal(item) {
     </div>
     <p class="descripcion"></p>
     ${item.codigoSello ? `<div class="dato-sello">🛡 Sello Llanero <b>${item.codigoSello}</b> · autenticidad verificable en la pestaña Sello</div>` : ''}
-    <div class="precio-grande">${item.precio} <small>/ ${item.unidad}${item.modalidad === 'a_domicilio' ? ' · servicio a domicilio' : ''}${item.modalidad === 'en_sitio' ? ' · en el sitio' : ''}</small></div>
+    <div class="precio-grande">${item.precio || 'A convenir'}${precioUnidad}${item.modalidad === 'a_domicilio' ? ' · a domicilio' : ''}${item.modalidad === 'en_sitio' ? ' · en el sitio' : ''}</div>
     <form class="formulario-flujo" id="form-flujo">
-      ${formularioPara(item)}
+      ${formularioPara(item, negocio)}
       <div class="error-form" id="error-flujo"></div>
       <button class="boton-principal" type="submit">
-        ${item.flujo === 'pedido' ? 'Pedir y pagar con Bre-B' : item.flujo === 'reserva' ? 'Reservar y pagar con Bre-B' : 'Agendar y pagar con Bre-B'}
+        ${item.flujo === 'pedido' ? 'Pedir y ver el pago' : item.flujo === 'reserva' ? 'Reservar y ver el pago' : 'Agendar y ver el pago'}
       </button>
     </form>`;
 
@@ -416,7 +582,16 @@ function abrirModal(item) {
   modal.querySelector('.quien').textContent =
     `${item.negocioNombre} · ${item.municipio} · ${item.tipo === 'producto' ? 'Producto' : 'Servicio'}`;
   modal.querySelector('.descripcion').textContent = item.descripcion || '';
-  modal.querySelector('.cerrar').addEventListener('click', cerrarModal);
+  // Cerrar vuelve a la hoja del negocio si venimos de ella.
+  modal.querySelector('.cerrar').addEventListener('click', () =>
+    negocio ? abrirNegocio(negocio.id) : cerrarModal());
+
+  // Entrega a domicilio: muestra el campo de dirección solo si se elige envío.
+  const radios = modal.querySelectorAll('input[name="entrega"]');
+  radios.forEach((r) => r.addEventListener('change', () => {
+    const dir = modal.querySelector('#campo-direccion');
+    if (dir) dir.hidden = modal.querySelector('input[name="entrega"]:checked')?.value !== 'domicilio';
+  }));
 
   modal.querySelector('#form-flujo').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -425,11 +600,13 @@ function abrirModal(item) {
     boton.disabled = true;
     $('error-flujo').textContent = '';
 
+    const entrega = modal.querySelector('input[name="entrega"]:checked')?.value;
     const cuerpo = {
       itemId: item.id,
       cantidad: Number(v('f-cantidad') || 1),
       cliente: v('f-nombre'),
       telefono: (v('f-telefono') || '').replace(/\D/g, ''),
+      entrega,
       lugar: v('f-lugar'),
       fechaInicio: v('f-inicio'),
       fechaFin: v('f-fin'),
@@ -594,7 +771,7 @@ async function enviarAlAgente(texto) {
     estado.historial = datos.mensajes;
     pintarTraza(datos.traza);
     burbuja(datos.respuesta, 'agente');
-    cargarCatalogo(); // si el agente publicó o vendió algo, la vitrina se refresca
+    cargarNegocios(); // si el agente publicó o vendió algo, la vitrina se refresca
   } catch (e) {
     esperando.remove();
     burbuja(`No pude responder: ${e.message}`, 'agente fallo');
@@ -681,12 +858,17 @@ function pintarMarcadores() {
     if (!neg.ubicacion) continue;
     const m = L.marker([neg.ubicacion.lat, neg.ubicacion.lng], { icon: iconoNegocio(neg.sector) });
     const emoji = { comercio: '🧺', turismo: '🌄', agro: '🐂' }[neg.sector] || '';
-    m.bindPopup(
+    const popup = L.DomUtil.create('div', 'popup-negocio');
+    popup.innerHTML =
       `<b>${neg.nombre}</b><br>` +
       `<span class="sec">${emoji} ${neg.sector}${neg.categoria ? ' · ' + neg.categoria : ''} · ${neg.municipio}</span>` +
       (neg.direccion ? `<br>${neg.direccion}` : '') +
-      (neg.telefono ? `<br>📞 ${neg.telefono}` : ''),
-    );
+      `<br><button class="popup-ver" type="button">Ver negocio</button>`;
+    popup.querySelector('.popup-ver').addEventListener('click', () => {
+      if (mapa) mapa.closePopup();
+      abrirNegocio(neg.id);
+    });
+    m.bindPopup(popup);
     m.addTo(capaMarcadores);
     n++;
   }
@@ -807,4 +989,4 @@ burbuja(
 );
 pintarSugerencias();
 poblarCategorias();
-cargarCatalogo();
+cargarNegocios();

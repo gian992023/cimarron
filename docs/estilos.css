@@ -266,6 +266,7 @@ input { font-family: inherit; }
   max-height: 92vh;
   overflow-y: auto;
   padding: 18px;
+  position: relative;
 }
 @media (min-width: 700px) { .modal { border-radius: 16px; } }
 
@@ -633,3 +634,89 @@ input { font-family: inherit; }
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 @media (min-width: 900px) { .flotante { bottom: 24px; } }
+
+/* ================= vitrina de negocios ================= */
+.tarjeta-negocio .portada-img {
+  height: 120px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  background-color: var(--panel-alto);
+}
+.tarjeta-negocio .chip-sector {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(0,0,0,0.55); border-radius: 999px;
+  padding: 2px 8px; font-size: 13px;
+}
+.categoria-pill {
+  font-size: 11px; color: var(--texto-tenue);
+  border: 1px solid var(--borde); border-radius: 999px;
+  padding: 3px 9px; text-transform: capitalize;
+}
+.rating { font-size: 12px; color: var(--ambar); font-weight: 700; white-space: nowrap; }
+.rating.grande { font-size: 15px; }
+
+/* ================= hoja del negocio ================= */
+.cerrar-flotante {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  background: rgba(0,0,0,0.55); color: #fff; border: none;
+  width: 34px; height: 34px; border-radius: 50%; font-size: 16px;
+}
+.hoja-portada {
+  height: 180px; background-size: cover; background-position: center;
+  border-radius: 16px 16px 0 0; background-color: var(--panel-alto);
+  margin: -18px -18px 0; /* sangra hasta el borde cancelando el padding del modal */
+}
+.hoja-portada.sinimg { display: grid; place-items: center; font-size: 64px; }
+.hoja-portada.sinimg.comercio { background: linear-gradient(135deg, #3d2c14, #2a1f10); }
+.hoja-portada.sinimg.turismo { background: linear-gradient(135deg, #16332a, #12241e); }
+.hoja-portada.sinimg.agro { background: linear-gradient(135deg, #2c2a12, #1f2010); }
+.hoja-cuerpo { padding: 16px 18px 20px; }
+.hoja-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.hoja-cabecera h3 { margin: 0; font-size: 20px; }
+.hoja-meta { display: flex; align-items: center; gap: 10px; margin: 8px 0; flex-wrap: wrap; }
+.hoja-muni { font-size: 12.5px; color: var(--texto-tenue); }
+.hoja-desc { font-size: 14px; line-height: 1.55; color: var(--texto); margin: 6px 0 10px; }
+.hoja-datos { font-size: 12.5px; color: var(--texto-tenue); margin-bottom: 10px; }
+.hoja-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.hoja-badges span {
+  font-size: 11.5px; background: var(--panel-alto); border: 1px solid var(--borde);
+  border-radius: 999px; padding: 4px 10px; color: var(--texto);
+}
+.hoja-titulo-items {
+  margin: 6px 0 10px; font-size: 13px; color: var(--ambar);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  border-top: 1px solid var(--borde); padding-top: 14px;
+}
+.hoja-items { display: flex; flex-direction: column; gap: 8px; }
+.hoja-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--panel-alto); border: 1px solid var(--borde);
+  border-radius: 10px; padding: 10px 12px;
+}
+.hoja-item-info { min-width: 0; }
+.hoja-item-nombre { font-size: 14px; font-weight: 600; }
+.hoja-item-desc { font-size: 12px; color: var(--texto-tenue); margin-top: 2px; line-height: 1.4; }
+.hoja-item-accion { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.hoja-precio { font-size: 13px; font-weight: 700; color: var(--ambar); white-space: nowrap; }
+.hoja-precio small { color: var(--texto-tenue); font-weight: 400; }
+.boton-mini {
+  background: var(--ambar); color: #1a1610; border: none;
+  border-radius: 8px; padding: 7px 14px; font-weight: 700; font-size: 12.5px;
+}
+.boton-mini:hover { background: var(--ambar-fuerte); }
+
+/* ================= entrega (envío/recoger) ================= */
+.entrega-opciones { display: flex; flex-direction: column; gap: 6px; }
+.entrega-opciones .radio {
+  display: flex; align-items: center; gap: 8px; font-size: 13.5px;
+  color: var(--texto); cursor: pointer;
+}
+
+/* ================= popup del mapa ================= */
+.popup-negocio { font-size: 13px; }
+.popup-negocio .sec { color: #555; font-size: 11.5px; }
+.popup-ver {
+  margin-top: 8px; background: var(--ocre, #9a5b1e); color: #fff; border: none;
+  border-radius: 8px; padding: 6px 12px; font-weight: 700; cursor: pointer; font-size: 12.5px;
+}

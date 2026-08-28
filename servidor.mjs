@@ -43,7 +43,7 @@ const { formatearCOP, formatearNumeroSolicitud, formatearFechaHora } = await imp
 const { ETIQUETAS } = await import('./src/nucleo/estadosSolicitud.mjs');
 const { MUNICIPIOS, SECTORES_META, MAPA_CASANARE } = await import('./src/nucleo/taxonomia.mjs');
 
-const PUERTO = Number(process.env.PUERTO || 8787);
+const PUERTO = Number(process.env.PORT || process.env.PUERTO || 8787);
 
 const TIPOS = {
   '.html': 'text/html; charset=utf-8',
@@ -109,7 +109,7 @@ const servidor = createServer(async (req, res) => {
     return res.end();
   }
 
-  // --- API: negocios (para el mapa) ---
+  // --- API: negocios (para el mapa y la vitrina) ---
   if (ruta === '/api/negocios' && req.method === 'GET') {
     const negs = await repositorio().listarNegocios({
       sector: url.searchParams.get('sector') || undefined,
@@ -119,8 +119,19 @@ const servidor = createServer(async (req, res) => {
         id: n.id, nombre: n.nombre, sector: n.sector, categoria: n.categoria || null,
         municipio: n.municipio, telefono: n.telefono || null, sitioWeb: n.sitioWeb || null,
         direccion: n.direccion || null, ubicacion: n.ubicacion,
+        imagenUrl: n.imagenUrl || null, descripcion: n.descripcion || null,
+        rating: n.rating ?? null, entrega: n.entrega || null, pago: n.pago || null,
       })),
     });
+  }
+
+  // --- API: un negocio con sus ítems (la hoja del negocio) ---
+  if (ruta.startsWith('/api/negocio/') && req.method === 'GET') {
+    const id = decodeURIComponent(ruta.slice('/api/negocio/'.length));
+    const negocio = await repositorio().obtenerNegocio(id);
+    if (!negocio) return responder(res, 404, { error: 'Negocio no encontrado' });
+    const items = await catalogo({ negocioId: id });
+    return responder(res, 200, { negocio, items });
   }
 
   // --- API: taxonomía (municipios y categorías para filtros y mapa) ---
