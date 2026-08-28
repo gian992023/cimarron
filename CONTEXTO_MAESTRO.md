@@ -133,7 +133,8 @@ El agente NO responde hasta que en `.env` haya UNA credencial:
 - `CLAUDE_CODE_OAUTH_TOKEN=...`  (plan de Claude, $0; se genera con `claude setup-token`).
 
 Sin eso, la web funciona completa pero el chat del asistente devuelve error pidiendo la
-credencial. Es el ÚNICO bloqueo del agente. El modelo por defecto es `claude-opus-5`.
+credencial. El modelo por defecto es `claude-haiku-4-5` (el más barato). Nota: Haiku
+no acepta `thinking:adaptive` ni `effort`; el código solo los envía a modelos 4.6+/5.
 
 ---
 
