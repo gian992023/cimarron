@@ -16,15 +16,33 @@ import { construirPrompt } from './prompt.mjs';
 
 const MAX_VUELTAS = 8;
 
+// Dos formas de autenticar (la que tú pongas en .env):
+//   1. ANTHROPIC_API_KEY        → API de pago por uso.
+//   2. CLAUDE_CODE_OAUTH_TOKEN  → tu plan de Claude, $0 (el patrón de NEXO).
+//      Genera el token con:  claude setup-token
+// Nunca se leen credenciales del sistema: solo lo que declares en el entorno.
 let cliente = null;
+export function metodoAuth() {
+  if (process.env.ANTHROPIC_API_KEY) return 'api_key';
+  if (process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_AUTH_TOKEN) return 'oauth';
+  return null;
+}
+
 function anthropic() {
-  if (!cliente) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error(
-        'Falta ANTHROPIC_API_KEY. Copia .env.example a .env y pon la llave de la API de Anthropic.',
-      );
-    }
-    cliente = new Anthropic();
+  if (cliente) return cliente;
+  const metodo = metodoAuth();
+  if (metodo === 'api_key') {
+    cliente = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  } else if (metodo === 'oauth') {
+    cliente = new Anthropic({
+      authToken: process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_AUTH_TOKEN,
+      defaultHeaders: { 'anthropic-beta': 'oauth-2025-04-20' },
+    });
+  } else {
+    throw new Error(
+      'Falta credencial de Claude. En .env pon ANTHROPIC_API_KEY (pago) o ' +
+        'CLAUDE_CODE_OAUTH_TOKEN (tu plan, $0; genéralo con "claude setup-token").',
+    );
   }
   return cliente;
 }

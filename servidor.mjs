@@ -32,7 +32,7 @@ function cargarEnv() {
 cargarEnv();
 
 // La importación va después de cargar .env: el agente lee variables al construirse.
-const { conversar } = await import('./src/agente/index.mjs');
+const { conversar, metodoAuth } = await import('./src/agente/index.mjs');
 const { origenActual, repositorio } = await import('./src/datos/index.mjs');
 const { catalogo, crearSolicitudCompleta, verificarSelloCompleto } = await import(
   './src/servicios/flujo.mjs'
@@ -136,7 +136,8 @@ const servidor = createServer(async (req, res) => {
       modelo: process.env.CIMARRON_MODELO || 'claude-opus-5',
       esfuerzo: process.env.CIMARRON_ESFUERZO || 'medium',
       origen_datos: origenActual(),
-      llave_configurada: Boolean(process.env.ANTHROPIC_API_KEY),
+      llave_configurada: metodoAuth() !== null,
+      auth: metodoAuth() || 'sin_configurar',
       breb_llave: process.env.BREB_LLAVE || '(sin configurar)',
       qr_disponible: existsSync(join(RAIZ, 'assets', 'qr-breb.png')),
     });
