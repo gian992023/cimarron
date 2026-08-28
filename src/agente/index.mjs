@@ -1,4 +1,4 @@
-// EL AGENTE: bucle de tool use sobre Claude Sonnet 5 (configurable con CIMARRON_MODELO).
+// EL AGENTE: bucle de tool use sobre Claude Haiku 4.5 (configurable con CIMARRON_MODELO).
 //
 // PATRÓN TOMADO DE PETRASERVIS (supabase/functions/chat-ia/index.ts).
 //
@@ -47,18 +47,28 @@ function anthropic() {
   return cliente;
 }
 
+// Las familias 4.6+/5 aceptan thinking adaptativo + output_config.effort.
+// Haiku 4.5 (y anteriores) los RECHAZAN con 400, así que no se envían.
+function soportaAdaptivo(modelo) {
+  return /(opus-5|opus-4-[678]|sonnet-5|sonnet-4-6|fable-5|mythos)/.test(modelo);
+}
+
 function parametros(mensajes) {
-  return {
-    model: process.env.CIMARRON_MODELO || 'claude-sonnet-5',
-    max_tokens: 16000,
+  const modelo = process.env.CIMARRON_MODELO || 'claude-haiku-4-5';
+  const base = {
+    model: modelo,
+    max_tokens: 8000,
     system: construirPrompt(),
     tools: HERRAMIENTAS,
-    // Thinking adaptativo: el modelo decide cuánto razonar en cada turno.
-    thinking: { type: 'adaptive' },
-    // El esfuerzo se baja a medium para que el chat responda rápido en la demo.
-    output_config: { effort: process.env.CIMARRON_ESFUERZO || 'medium' },
     messages: mensajes,
   };
+  if (soportaAdaptivo(modelo)) {
+    // Thinking adaptativo: el modelo decide cuánto razonar en cada turno.
+    base.thinking = { type: 'adaptive' };
+    // El esfuerzo se baja a medium para que el chat responda rápido en la demo.
+    base.output_config = { effort: process.env.CIMARRON_ESFUERZO || 'medium' };
+  }
+  return base;
 }
 
 /**

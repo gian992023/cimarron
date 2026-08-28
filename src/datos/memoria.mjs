@@ -26,6 +26,7 @@ export function crearRepositorioMemoria() {
   }));
   const solicitudes = [];
   const sellos = [];
+  const favoritos = []; // { usuarioId, itemId }
   // Usuarios sembrados: un admin y un cliente listos para probar.
   const usuarios = [
     { id: 'usr_admin', rol: 'admin', nombre: 'Administrador CIMARRÓN', email: 'admin@cimarron.co', telefono: '3000000000', direccion: null, creadoEn: ahora() },
@@ -79,6 +80,7 @@ export function crearRepositorioMemoria() {
         telefono: datos.telefono ? String(datos.telefono).replace(/\D/g, '') : null,
         direccion: datos.direccion || null,
         municipio: datos.municipio || null,
+        password: datos.password || null,
         creadoEn: ahora(),
       };
       usuarios.push(usuario);
@@ -106,6 +108,23 @@ export function crearRepositorioMemoria() {
       if (!n) throw new Error('Negocio no encontrado');
       n.estado = estado; // 'aprobado' | 'rechazado' | 'suspendido'
       return clon(n);
+    },
+
+    // ----- favoritos -----
+    async agregarFavorito(usuarioId, itemId) {
+      if (!favoritos.some((f) => f.usuarioId === usuarioId && f.itemId === itemId)) {
+        favoritos.push({ usuarioId, itemId });
+      }
+      return { ok: true };
+    },
+    async quitarFavorito(usuarioId, itemId) {
+      const i = favoritos.findIndex((f) => f.usuarioId === usuarioId && f.itemId === itemId);
+      if (i >= 0) favoritos.splice(i, 1);
+      return { ok: true };
+    },
+    async listarFavoritos(usuarioId) {
+      const ids = favoritos.filter((f) => f.usuarioId === usuarioId).map((f) => f.itemId);
+      return items.filter((i) => ids.includes(i.id)).map(enriquecer);
     },
 
     // ----- negocios -----
@@ -144,19 +163,26 @@ export function crearRepositorioMemoria() {
       const aprobados = new Set(negocios.filter((n) => n.estado === 'aprobado').map((n) => n.id));
       const visible = (id) => filtro.incluirTodos || filtro.negocioId === id || aprobados.has(id);
 
+      const muni = filtro.municipio ? String(filtro.municipio).toLowerCase().trim() : null;
       return items
-        .filter(
-          (i) =>
+        .filter((i) => {
+          const neg = negocioDe(i.negocioId);
+          return (
             i.activo &&
             visible(i.negocioId) &&
             (!filtro.negocioId || i.negocioId === filtro.negocioId) &&
             (!filtro.tipo || i.tipo === filtro.tipo) &&
             (!filtro.categoria || i.categoria === filtro.categoria) &&
             (!porSector || porSector.has(i.negocioId)) &&
+            (!muni || String(neg?.municipio || '').toLowerCase().includes(muni)) &&
+            // La búsqueda libre también matchea el nombre y el municipio del negocio.
             (coincide(i.nombre, filtro.busqueda) ||
               coincide(i.descripcion, filtro.busqueda) ||
-              coincide(i.categoria, filtro.busqueda)),
-        )
+              coincide(i.categoria, filtro.busqueda) ||
+              coincide(neg?.nombre, filtro.busqueda) ||
+              coincide(neg?.municipio, filtro.busqueda))
+          );
+        })
         .map(enriquecer);
     },
 

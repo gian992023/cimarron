@@ -9,6 +9,8 @@ api_key_anthopic.txt
 *.key
 *.pem
 secret*.txt
+*service_role*
+service_role.txt
 .DS_Store
 Thumbs.db
 

@@ -5,6 +5,8 @@
 // no se ha importado nada. Así el equipo trabaja con ejemplos hasta que llega la
 // data real, sin tocar código.
 
+import { enriquecerItems } from './enriquecer.mjs';
+
 let NEGOCIOS, ITEMS, ORIGEN;
 
 try {
@@ -14,5 +16,9 @@ try {
   ({ NEGOCIOS, ITEMS } = await import('./semillas.mjs'));
   ORIGEN = 'ejemplo';
 }
+
+// Cada comercio y hotel con solo ítems genéricos recibe un producto/servicio
+// real (con precio y descripción). Determinista: memoria y Supabase coinciden.
+ITEMS = enriquecerItems(NEGOCIOS, ITEMS);
 
 export { NEGOCIOS, ITEMS, ORIGEN };

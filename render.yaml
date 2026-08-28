@@ -26,9 +26,7 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false # se ingresa a mano en el dashboard: nunca en el repo
       - key: CIMARRON_MODELO
-        value: claude-sonnet-5
-      - key: CIMARRON_ESFUERZO
-        value: medium
+        value: claude-haiku-4-5 # el más barato ($1/$5 por 1M); el código no envía effort/thinking a Haiku
       - key: CIMARRON_ORIGEN_DATOS
         value: memoria
       - key: BREB_LLAVE

@@ -33,10 +33,11 @@ export const HERRAMIENTAS = [
     input_schema: {
       type: 'object',
       properties: {
-        busqueda: { type: 'string', description: 'Texto libre para filtrar' },
+        busqueda: { type: 'string', description: 'Texto libre: matchea nombre del ítem, descripción, categoría, y también el nombre y municipio del negocio' },
         sector: { type: 'string', enum: SECTORES },
         tipo: { type: 'string', enum: ['producto', 'servicio'] },
-        categoria: { type: 'string', description: 'Categoría del sector (artesania, alojamiento, insumos...)' },
+        categoria: { type: 'string', description: 'Categoría del sector (restaurantes, alojamiento, ferreterías, insumos...)' },
+        municipio: { type: 'string', description: 'Filtra por municipio de Casanare (Yopal, Aguazul, Villanueva...)' },
         negocio_id: { type: 'string' },
       },
       required: [],
@@ -197,14 +198,38 @@ export async function ejecutarHerramienta(nombre, entrada) {
   try {
     switch (nombre) {
       case 'consultar_catalogo': {
-        const items = await catalogo({
+        const base = {
           busqueda: entrada.busqueda,
           sector: entrada.sector,
           tipo: entrada.tipo,
           categoria: entrada.categoria,
+          municipio: entrada.municipio,
           negocioId: entrada.negocio_id,
-        });
+        };
+        let items = await catalogo(base);
+        let nota = null;
+        // Fallback: si no hubo resultados, relaja filtros en cascada para no
+        // dejar al usuario sin opciones (robusto ante consultas muy estrechas).
+        if (items.length === 0) {
+          const intentos = [
+            { ...base, categoria: undefined },
+            { ...base, categoria: undefined, busqueda: undefined },
+            { sector: entrada.sector, municipio: entrada.municipio },
+            { sector: entrada.sector },
+            { municipio: entrada.municipio },
+          ];
+          for (const f of intentos) {
+            if (Object.values(f).every((v) => !v)) continue;
+            items = await catalogo(f);
+            if (items.length) {
+              nota = 'No hubo coincidencia exacta con ese filtro; te muestro opciones cercanas (mismo sector o municipio). Menciónalas con naturalidad.';
+              break;
+            }
+          }
+        }
+        items = items.slice(0, 40); // tope para no saturar el contexto del modelo
         return {
+          ...(nota ? { nota_para_ti: nota } : {}),
           encontrados: items.length,
           items: items.map((i) => ({
             item_id: i.id,

@@ -12,9 +12,10 @@ let db = null;
 function cliente() {
   if (db) return db;
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Acepta el nombre clásico o el nuevo (sb_secret_...). Ambos son la clave secreta del servidor.
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) {
-    throw new Error('Faltan SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env para usar el origen supabase.');
+    throw new Error('Faltan SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY (o SUPABASE_SECRET_KEY) para usar el origen supabase.');
   }
   db = createClient(url, key, { auth: { persistSession: false } });
   return db;
@@ -50,6 +51,16 @@ const itemAFila = (d) => ({
   id: d.id, negocio_id: d.negocioId, tipo: d.tipo, nombre: d.nombre, precio_cop: d.precioCop ?? null,
   unidad: d.unidad ?? 'unidad', categoria: d.categoria ?? null, modalidad: d.modalidad ?? null,
   descripcion: d.descripcion ?? null, codigo_sello: d.codigoSello ?? null, activo: d.activo ?? true,
+});
+const normEmail = (e) => (e ? String(e).toLowerCase().trim() : null);
+const normTel = (t) => (t ? String(t).replace(/\D/g, '') : null);
+const perfilDeFila = (p) => p && ({
+  id: p.id, rol: p.rol, nombre: p.nombre, email: p.email, telefono: p.telefono,
+  direccion: p.direccion, municipio: p.municipio, password: p.password, creadoEn: p.creado_en,
+});
+const perfilAFila = (d) => ({
+  rol: d.rol || 'cliente', nombre: d.nombre, email: normEmail(d.email), telefono: normTel(d.telefono),
+  direccion: d.direccion ?? null, municipio: d.municipio ?? null, password: d.password ?? null,
 });
 const solAFila = (d) => ({
   id: d.id, tipo: d.tipo, negocio_id: d.negocioId, item_id: d.itemId ?? null,
@@ -100,15 +111,30 @@ export function crearRepositorioSupabase() {
       if (f.categoria) q = q.eq('categoria', f.categoria);
       const { data, error } = await q;
       if (error) throw error;
-      let items = (data || []).map(itemDeFila);
-      if (f.sector || f.busqueda) {
-        const enr = await Promise.all(items.map(enriquecer));
-        items = enr.filter((i) =>
-          (!f.sector || i.sector === f.sector) &&
-          (!f.busqueda || `${i.nombre} ${i.descripcion || ''}`.toLowerCase().includes(f.busqueda.toLowerCase())));
-        return items;
+      const items = (data || []).map(itemDeFila);
+      // Trae los negocios en UNA sola consulta (mapa) para enriquecer y filtrar.
+      const ids = [...new Set(items.map((i) => i.negocioId))];
+      const negs = new Map();
+      if (ids.length) {
+        const { data: ns } = await c.from('negocios').select('id, nombre, municipio, sector, radio_cobertura_km, estado').in('id', ids);
+        for (const n of ns || []) negs.set(n.id, n);
       }
-      return Promise.all(items.map(enriquecer));
+      const muni = f.municipio ? String(f.municipio).toLowerCase() : null;
+      const bus = f.busqueda ? String(f.busqueda).toLowerCase() : null;
+      return items
+        .map((i) => {
+          const n = negs.get(i.negocioId);
+          return {
+            ...i, negocioNombre: n?.nombre, municipio: n?.municipio, sector: n?.sector,
+            radioCoberturaKm: n?.radio_cobertura_km ?? 0, estado: n?.estado,
+          };
+        })
+        .filter((i) =>
+          (f.incluirTodos || f.negocioId || i.estado === 'aprobado') &&
+          (!f.sector || i.sector === f.sector) &&
+          (!muni || String(i.municipio || '').toLowerCase().includes(muni)) &&
+          (!bus || `${i.nombre} ${i.descripcion || ''} ${i.categoria || ''} ${i.negocioNombre || ''} ${i.municipio || ''}`
+            .toLowerCase().includes(bus)));
     },
     async obtenerItem(id) {
       const { data } = await c.from('items').select('*').eq('id', id).single();
@@ -164,6 +190,72 @@ export function crearRepositorioSupabase() {
       const { error } = await c.from('sellos').insert({ codigo, hash, hash_anterior: hashAnterior, contenido });
       if (error) throw error;
       return sello;
+    },
+
+    // ----- usuarios / cuentas (tabla perfiles) -----
+    async crearUsuario(datos) {
+      const { data, error } = await c.from('perfiles').insert(perfilAFila(datos)).select('*').single();
+      if (error) throw error;
+      return perfilDeFila(data);
+    },
+    async buscarUsuario({ email, telefono }) {
+      const e = normEmail(email);
+      const t = normTel(telefono);
+      if (!e && !t) return null;
+      const ors = [];
+      if (e) ors.push(`email.eq.${e}`);
+      if (t) ors.push(`telefono.eq.${t}`);
+      const { data, error } = await c.from('perfiles').select('*').or(ors.join(',')).limit(1);
+      if (error) throw error;
+      return data && data[0] ? perfilDeFila(data[0]) : null;
+    },
+    async obtenerUsuario(id) {
+      const { data } = await c.from('perfiles').select('*').eq('id', id).single();
+      return perfilDeFila(data);
+    },
+    async actualizarUsuario(id, cambios) {
+      const parcial = {};
+      if ('nombre' in cambios) parcial.nombre = cambios.nombre;
+      if ('email' in cambios) parcial.email = normEmail(cambios.email);
+      if ('telefono' in cambios) parcial.telefono = normTel(cambios.telefono);
+      if ('direccion' in cambios) parcial.direccion = cambios.direccion;
+      if ('municipio' in cambios) parcial.municipio = cambios.municipio;
+      if ('password' in cambios) parcial.password = cambios.password;
+      const { data, error } = await c.from('perfiles').update(parcial).eq('id', id).select('*').single();
+      if (error) throw error;
+      return perfilDeFila(data);
+    },
+    async listarUsuarios(filtro = {}) {
+      let q = c.from('perfiles').select('*');
+      if (filtro.rol) q = q.eq('rol', filtro.rol);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data || []).map(perfilDeFila);
+    },
+    async aprobarNegocio(id, estado) {
+      const { data, error } = await c.from('negocios').update({ estado }).eq('id', id).select('*').single();
+      if (error) throw error;
+      return negDeFila(data);
+    },
+
+    // ----- favoritos -----
+    async agregarFavorito(usuarioId, itemId) {
+      const { error } = await c.from('favoritos').upsert({ usuario_id: usuarioId, item_id: itemId }, { onConflict: 'usuario_id,item_id' });
+      if (error) throw error;
+      return { ok: true };
+    },
+    async quitarFavorito(usuarioId, itemId) {
+      const { error } = await c.from('favoritos').delete().eq('usuario_id', usuarioId).eq('item_id', itemId);
+      if (error) throw error;
+      return { ok: true };
+    },
+    async listarFavoritos(usuarioId) {
+      const { data, error } = await c.from('favoritos').select('item_id').eq('usuario_id', usuarioId);
+      if (error) throw error;
+      const ids = (data || []).map((f) => f.item_id);
+      if (!ids.length) return [];
+      const { data: items } = await c.from('items').select('*').in('id', ids);
+      return Promise.all((items || []).map((i) => enriquecer(itemDeFila(i))));
     },
   };
 }
