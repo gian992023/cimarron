@@ -262,6 +262,7 @@ function irA(vista) {
   $('flotante').style.display = vista === 'asistente' ? 'none' : '';
   if (vista === 'asistente') $('mensaje').focus();
   if (vista === 'mapa') iniciarMapa();
+  if (vista === 'admin') cargarAdmin();
 }
 
 document.querySelectorAll('[data-vista]').forEach((b) => {
@@ -959,6 +960,172 @@ $('formulario-solicitudes').addEventListener('submit', async (e) => {
 });
 
 /* ================================================================ */
+/* Cuentas: registro, login, sesión y panel de admin               */
+/* ================================================================ */
+
+const SESION_KEY = 'cimarron_sesion';
+let sesionActual = null;
+try { sesionActual = JSON.parse(localStorage.getItem(SESION_KEY) || 'null'); } catch { sesionActual = null; }
+
+async function apiCuenta(ruta, cuerpo, metodo = 'POST') {
+  if (ESTATICO) return { error: 'estatico' };
+  const opt = { method: metodo, headers: { 'Content-Type': 'application/json' } };
+  if (sesionActual) opt.headers['x-usuario-id'] = sesionActual.id;
+  if (cuerpo) opt.body = JSON.stringify(cuerpo);
+  const r = await fetch(ruta, opt);
+  return { status: r.status, datos: await r.json() };
+}
+
+function guardarSesion(s) {
+  sesionActual = s;
+  localStorage.setItem(SESION_KEY, JSON.stringify(s));
+  reflejarSesion();
+}
+function cerrarSesion() {
+  sesionActual = null;
+  localStorage.removeItem(SESION_KEY);
+  reflejarSesion();
+  irA('explorar');
+}
+
+function reflejarSesion() {
+  const chip = $('sesion-chip');
+  const navAdmin = document.querySelectorAll('.nav-admin');
+  if (sesionActual) {
+    chip.hidden = false;
+    chip.textContent = `👤 ${sesionActual.nombre.split(' ')[0]}`;
+    navAdmin.forEach((b) => (b.hidden = sesionActual.rol !== 'admin'));
+    $('cuenta-sesion').hidden = false;
+    $('cuenta-formularios').hidden = true;
+    $('cuenta-datos').innerHTML =
+      `<p><b>${sesionActual.nombre}</b> · rol: ${sesionActual.rol}</p>` +
+      `<p class="texto-tenue">${sesionActual.email || ''} ${sesionActual.telefono || ''}` +
+      `${sesionActual.direccion ? ' · ' + sesionActual.direccion : ''}</p>` +
+      (sesionActual.rol === 'admin' ? '<p class="texto-tenue">Tienes el panel de administración en el menú.</p>' : '') +
+      (sesionActual.rol === 'negocio' ? '<p class="texto-tenue">Tu negocio aparece cuando el administrador lo aprueba.</p>' : '');
+  } else {
+    chip.hidden = true;
+    navAdmin.forEach((b) => (b.hidden = true));
+    $('cuenta-sesion').hidden = true;
+    $('cuenta-formularios').hidden = false;
+  }
+}
+
+// Pestañas de la vista Cuenta
+document.querySelectorAll('#cuenta-tabs .chip').forEach((b) => {
+  b.addEventListener('click', () => {
+    document.querySelector('#cuenta-tabs .chip.activo')?.classList.remove('activo');
+    b.classList.add('activo');
+    document.querySelectorAll('.cuenta-form').forEach((f) => (f.hidden = f.dataset.tab !== b.dataset.tab));
+  });
+});
+
+if (!ESTATICO) {
+  // Login
+  $('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const c = $('l-contacto').value.trim();
+    const cuerpo = c.includes('@') ? { email: c } : { telefono: c };
+    const { datos } = await apiCuenta('/api/login', cuerpo);
+    if (datos.error) { $('err-login').textContent = datos.error; return; }
+    guardarSesion(datos.sesion);
+    irA(datos.sesion.rol === 'admin' ? 'admin' : 'explorar');
+  });
+
+  // Registro cliente
+  $('form-cliente').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const { datos } = await apiCuenta('/api/registro/cliente', {
+      nombre: $('c-nombre').value.trim(),
+      email: $('c-email').value.trim() || undefined,
+      telefono: $('c-telefono').value.replace(/\D/g, '') || undefined,
+      direccion: $('c-direccion').value.trim() || undefined,
+    });
+    if (datos.error) { $('err-cliente').textContent = datos.error; return; }
+    guardarSesion(datos.sesion);
+    irA('explorar');
+  });
+
+  // Registro negocio
+  $('form-negocio').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sector = $('n-sector').value;
+    const { datos } = await apiCuenta('/api/registro/negocio', {
+      nombre: $('n-nombre').value.trim(),
+      sector,
+      responsable: $('n-responsable').value.trim(),
+      telefono: $('n-telefono').value.replace(/\D/g, '') || undefined,
+      municipio: $('n-municipio').value.trim(),
+      categoria: sector === 'comercio' ? $('n-categoria').value : $('n-categoria').value || undefined,
+      direccion: $('n-direccion').value.trim() || undefined,
+      qrUrl: $('n-qr').value.trim() || undefined,
+    });
+    if (datos.error) { $('err-negocio').textContent = datos.error; return; }
+    guardarSesion(datos.sesion);
+    $('err-negocio').textContent = '';
+    alert(datos.nota || 'Negocio registrado. Queda en revisión del administrador.');
+    irA('explorar');
+  });
+
+  $('cerrar-sesion').addEventListener('click', cerrarSesion);
+}
+
+// Categoría del negocio según el sector elegido
+async function poblarCategoriasNegocio() {
+  const sel = $('n-categoria');
+  if (!sel) return;
+  const tax = await API.taxonomia();
+  const sector = $('n-sector').value;
+  const cats = tax.sectores?.[sector]?.categorias || [];
+  sel.innerHTML = cats.map((c) => `<option value="${c}">${c}</option>`).join('') || '<option value="">(general)</option>';
+  $('campo-categoria').style.display = sector === 'comercio' ? '' : '';
+}
+$('n-sector')?.addEventListener('change', poblarCategoriasNegocio);
+
+// Panel de admin
+async function cargarAdmin() {
+  if (ESTATICO || !sesionActual || sesionActual.rol !== 'admin') {
+    $('admin-resumen').innerHTML = '<p class="texto-tenue">Entra como administrador para ver el panel.</p>';
+    $('admin-pendientes').innerHTML = ''; $('admin-clientes').innerHTML = '';
+    return;
+  }
+  const { datos: p } = await apiCuenta('/api/admin/panel', null, 'GET');
+  if (!p || p.error) { $('admin-resumen').innerHTML = `<p class="texto-tenue">${p?.error || 'Error'}</p>`; return; }
+  const r = p.resumen;
+  $('admin-resumen').innerHTML =
+    `<div class="admin-tiles">
+       <div><b>${r.negocios}</b><span>negocios</span></div>
+       <div><b>${r.aprobados}</b><span>aprobados</span></div>
+       <div><b>${r.pendientes}</b><span>pendientes</span></div>
+       <div><b>${r.clientes}</b><span>clientes</span></div>
+     </div>`;
+  $('admin-pendientes').innerHTML = p.pendientes.length
+    ? ''
+    : '<p class="texto-tenue">No hay negocios por aprobar.</p>';
+  for (const n of p.pendientes) {
+    const div = document.createElement('div');
+    div.className = 'admin-fila';
+    div.innerHTML = `
+      <div><b>${n.nombre}</b><div class="detalle">${n.sector} · ${n.municipio}${n.categoria ? ' · ' + n.categoria : ''}${n.telefono ? ' · 📞 ' + n.telefono : ''}</div></div>
+      <div class="admin-acciones">
+        <button class="boton-mini aprobar">Aprobar</button>
+        <button class="boton-mini-borde rechazar">Rechazar</button>
+      </div>`;
+    div.querySelector('.aprobar').addEventListener('click', () => decidir(n.id, 'aprobar'));
+    div.querySelector('.rechazar').addEventListener('click', () => decidir(n.id, 'rechazar'));
+    $('admin-pendientes').appendChild(div);
+  }
+  $('admin-clientes').innerHTML = p.clientes.length
+    ? p.clientes.map((c) => `<div class="admin-fila"><div>${c.nombre}<div class="detalle">${c.email || ''} ${c.telefono || ''}</div></div></div>`).join('')
+    : '<p class="texto-tenue">Aún no hay clientes registrados.</p>';
+}
+async function decidir(id, decision) {
+  await apiCuenta('/api/admin/decidir', { negocioId: id, decision });
+  cargarAdmin();
+  cargarNegocios();
+}
+
+/* ================================================================ */
 /* Arranque                                                         */
 /* ================================================================ */
 
@@ -990,3 +1157,14 @@ burbuja(
 pintarSugerencias();
 poblarCategorias();
 cargarNegocios();
+reflejarSesion();
+poblarCategoriasNegocio();
+if (ESTATICO) {
+  document.querySelectorAll('.cuenta-form').forEach((f) => {
+    f.querySelectorAll('input,select,button').forEach((el) => (el.disabled = true));
+  });
+  const aviso = document.createElement('p');
+  aviso.className = 'texto-tenue';
+  aviso.textContent = 'El registro y las cuentas funcionan en la versión con servidor o Supabase. En esta demo pública son solo de muestra.';
+  $('cuenta-formularios').prepend(aviso);
+}

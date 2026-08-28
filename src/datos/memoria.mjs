@@ -16,7 +16,9 @@ import { emitirSello, raizDeCadena } from '../nucleo/sello.mjs';
 const ahora = () => new Date().toISOString();
 
 export function crearRepositorioMemoria() {
-  const negocios = JSON.parse(JSON.stringify(NEGOCIOS)).map((n) => ({ activo: true, ...n }));
+  // La data existente (importada o curada) nace aprobada; los registros nuevos
+  // desde la app nacen 'pendiente' y esperan la aprobación del admin.
+  const negocios = JSON.parse(JSON.stringify(NEGOCIOS)).map((n) => ({ activo: true, estado: 'aprobado', ...n }));
   const items = JSON.parse(JSON.stringify(ITEMS)).map((i) => ({
     activo: true,
     codigoSello: null,
@@ -24,7 +26,13 @@ export function crearRepositorioMemoria() {
   }));
   const solicitudes = [];
   const sellos = [];
+  // Usuarios sembrados: un admin y un cliente listos para probar.
+  const usuarios = [
+    { id: 'usr_admin', rol: 'admin', nombre: 'Administrador CIMARRÓN', email: 'admin@cimarron.co', telefono: '3000000000', direccion: null, creadoEn: ahora() },
+    { id: 'usr_cliente', rol: 'cliente', nombre: 'Cliente Demo', email: 'cliente@cimarron.co', telefono: '3123066140', direccion: null, creadoEn: ahora() },
+  ];
   let consecutivo = 1000;
+  let secuenciaUsr = 0;
 
   const clon = (o) => (o ? JSON.parse(JSON.stringify(o)) : o);
   const coincide = (texto, b) =>
@@ -61,12 +69,53 @@ export function crearRepositorioMemoria() {
   }
 
   return {
+    // ----- usuarios / cuentas -----
+    async crearUsuario(datos) {
+      const usuario = {
+        id: datos.id || `usr_${Date.now().toString(36)}${secuenciaUsr++}`,
+        rol: datos.rol || 'cliente',
+        nombre: datos.nombre,
+        email: datos.email ? String(datos.email).toLowerCase().trim() : null,
+        telefono: datos.telefono ? String(datos.telefono).replace(/\D/g, '') : null,
+        direccion: datos.direccion || null,
+        municipio: datos.municipio || null,
+        creadoEn: ahora(),
+      };
+      usuarios.push(usuario);
+      return clon(usuario);
+    },
+    async buscarUsuario({ email, telefono }) {
+      const e = email ? String(email).toLowerCase().trim() : null;
+      const t = telefono ? String(telefono).replace(/\D/g, '') : null;
+      return clon(usuarios.find((u) => (e && u.email === e) || (t && u.telefono === t)) ?? null);
+    },
+    async obtenerUsuario(id) {
+      return clon(usuarios.find((u) => u.id === id) ?? null);
+    },
+    async actualizarUsuario(id, cambios) {
+      const u = usuarios.find((x) => x.id === id);
+      if (!u) throw new Error('Usuario no encontrado');
+      Object.assign(u, cambios);
+      return clon(u);
+    },
+    async listarUsuarios(filtro = {}) {
+      return clon(usuarios.filter((u) => !filtro.rol || u.rol === filtro.rol));
+    },
+    async aprobarNegocio(id, estado) {
+      const n = negocioDe(id);
+      if (!n) throw new Error('Negocio no encontrado');
+      n.estado = estado; // 'aprobado' | 'rechazado' | 'suspendido'
+      return clon(n);
+    },
+
     // ----- negocios -----
     async listarNegocios(filtro = {}) {
       return clon(
         negocios.filter(
           (n) =>
             n.activo &&
+            (filtro.incluirTodos || (filtro.estado ? n.estado === filtro.estado : n.estado === 'aprobado')) &&
+            (!filtro.ownerId || n.ownerId === filtro.ownerId) &&
             (!filtro.sector || n.sector === filtro.sector) &&
             (coincide(n.nombre, filtro.busqueda) ||
               coincide(n.descripcion, filtro.busqueda) ||
@@ -80,7 +129,8 @@ export function crearRepositorioMemoria() {
     },
 
     async crearNegocio(datos) {
-      const negocio = { id: generarId('neg'), activo: true, radioCoberturaKm: 10, ...datos };
+      // Un registro nuevo desde la app nace pendiente de aprobación.
+      const negocio = { id: generarId('neg'), activo: true, radioCoberturaKm: 10, estado: 'pendiente', ...datos };
       negocios.push(negocio);
       return clon(negocio);
     },
@@ -90,11 +140,15 @@ export function crearRepositorioMemoria() {
       const porSector = filtro.sector
         ? new Set(negocios.filter((n) => n.sector === filtro.sector).map((n) => n.id))
         : null;
+      // Solo ítems de negocios aprobados salen al público (salvo incluirTodos o negocioId directo).
+      const aprobados = new Set(negocios.filter((n) => n.estado === 'aprobado').map((n) => n.id));
+      const visible = (id) => filtro.incluirTodos || filtro.negocioId === id || aprobados.has(id);
 
       return items
         .filter(
           (i) =>
             i.activo &&
+            visible(i.negocioId) &&
             (!filtro.negocioId || i.negocioId === filtro.negocioId) &&
             (!filtro.tipo || i.tipo === filtro.tipo) &&
             (!filtro.categoria || i.categoria === filtro.categoria) &&

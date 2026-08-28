@@ -720,3 +720,37 @@ input { font-family: inherit; }
   margin-top: 8px; background: var(--ocre, #9a5b1e); color: #fff; border: none;
   border-radius: 8px; padding: 6px 12px; font-weight: 700; cursor: pointer; font-size: 12.5px;
 }
+
+/* ================= cuentas y admin ================= */
+.sesion-chip {
+  background: var(--panel-alto); border: 1px solid var(--borde); color: var(--ambar);
+  border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+}
+.select-full, .select-categoria {
+  width: 100%; background: var(--fondo); border: 1px solid var(--borde);
+  border-radius: 10px; padding: 10px 12px; color: var(--texto); font-size: 14px;
+}
+.cuenta-form { margin-top: 12px; }
+.boton-secundario {
+  background: none; border: 1px solid var(--borde); color: var(--texto-tenue);
+  border-radius: 10px; padding: 10px 16px; font-size: 13.5px; margin-top: 10px;
+}
+.boton-secundario:hover { border-color: var(--ladrillo); color: #e79878; }
+.boton-mini-borde {
+  background: none; border: 1px solid #6b3222; color: #e79878;
+  border-radius: 8px; padding: 7px 14px; font-weight: 700; font-size: 12.5px;
+}
+.admin-sub { margin: 18px 0 8px; font-size: 13px; color: var(--ambar); text-transform: uppercase; letter-spacing: 0.04em; }
+.admin-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 6px 0; }
+.admin-tiles > div {
+  background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 10px;
+  padding: 12px 8px; text-align: center;
+}
+.admin-tiles b { display: block; font-size: 22px; color: var(--ambar); }
+.admin-tiles span { font-size: 11px; color: var(--texto-tenue); }
+.admin-fila {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border: 1px solid var(--borde); border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: 13.5px;
+}
+.admin-fila .detalle { font-size: 12px; color: var(--texto-tenue); margin-top: 2px; }
+.admin-acciones { display: flex; gap: 6px; flex-shrink: 0; }

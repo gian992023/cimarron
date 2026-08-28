@@ -33,9 +33,13 @@ cargarEnv();
 
 // La importación va después de cargar .env: el agente lee variables al construirse.
 const { conversar, metodoAuth } = await import('./src/agente/index.mjs');
-const { origenActual, repositorio } = await import('./src/datos/index.mjs');
+const { origenActual, repositorio, inicializarDatos } = await import('./src/datos/index.mjs');
+await inicializarDatos(); // deja listo el origen (memoria o supabase) antes de servir
 const { catalogo, crearSolicitudCompleta, verificarSelloCompleto } = await import(
   './src/servicios/flujo.mjs'
+);
+const { registrarCliente, registrarNegocio, login, panelAdmin, decidirNegocio } = await import(
+  './src/servicios/cuentas.mjs'
 );
 const { formatearCOP, formatearNumeroSolicitud, formatearFechaHora } = await import(
   './src/nucleo/formato.mjs'
@@ -200,6 +204,37 @@ const servidor = createServer(async (req, res) => {
   if (ruta.startsWith('/api/sello/') && req.method === 'GET') {
     const codigo = decodeURIComponent(ruta.slice('/api/sello/'.length));
     return responder(res, 200, await verificarSelloCompleto(codigo));
+  }
+
+  // --- API: cuentas (registro, login) ---
+  if (ruta === '/api/registro/cliente' && req.method === 'POST') {
+    const r = await registrarCliente(await leerCuerpo(req));
+    return responder(res, r.error ? 400 : 200, r);
+  }
+  if (ruta === '/api/registro/negocio' && req.method === 'POST') {
+    const r = await registrarNegocio(await leerCuerpo(req));
+    return responder(res, r.error ? 400 : 200, r);
+  }
+  if (ruta === '/api/login' && req.method === 'POST') {
+    const r = await login(await leerCuerpo(req));
+    return responder(res, r.error ? 400 : 200, r);
+  }
+
+  // --- API: administración (requiere sesión de admin) ---
+  if (ruta.startsWith('/api/admin/')) {
+    const uid = req.headers['x-usuario-id'];
+    const usuario = uid ? await repositorio().obtenerUsuario(uid) : null;
+    if (!usuario || usuario.rol !== 'admin') {
+      return responder(res, 403, { error: 'Solo el administrador puede acceder.' });
+    }
+    if (ruta === '/api/admin/panel' && req.method === 'GET') {
+      return responder(res, 200, await panelAdmin());
+    }
+    if (ruta === '/api/admin/decidir' && req.method === 'POST') {
+      const { negocioId, decision } = await leerCuerpo(req);
+      return responder(res, 200, await decidirNegocio(negocioId, decision));
+    }
+    return responder(res, 404, { error: 'Ruta admin no encontrada' });
   }
 
   // --- API: el agente ---

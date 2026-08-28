@@ -15,6 +15,7 @@
     "importar": "node scripts/importar-datos.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.70.0"
+    "@anthropic-ai/sdk": "^0.70.0",
+    "@supabase/supabase-js": "^2.45.0"
   }
 }

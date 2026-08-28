@@ -9,19 +9,27 @@ import { crearRepositorioMemoria } from './memoria.mjs';
 
 let instancia = null;
 
+/**
+ * Inicializa el origen de datos. Llamar al arrancar el servidor.
+ * Para 'memoria' no es obligatorio (repositorio() lo crea al vuelo), pero
+ * 'supabase' sí lo requiere porque carga su cliente de forma diferida.
+ */
+export async function inicializarDatos() {
+  if (instancia) return instancia;
+  if (origenActual() === 'supabase') {
+    const { crearRepositorioSupabase } = await import('./supabase.mjs');
+    instancia = validarRepositorio(crearRepositorioSupabase(), 'supabase');
+  } else {
+    instancia = validarRepositorio(crearRepositorioMemoria(), 'memoria');
+  }
+  return instancia;
+}
+
 export function repositorio() {
   if (instancia) return instancia;
-
-  const origen = (process.env.CIMARRON_ORIGEN_DATOS || 'memoria').toLowerCase();
-
-  if (origen === 'supabase') {
-    throw new Error(
-      'La implementación de Supabase todavía no está conectada. ' +
-        'Usa CIMARRON_ORIGEN_DATOS=memoria para la demo, o implementa src/datos/supabase.mjs ' +
-        'cumpliendo el contrato de src/datos/interfaces.mjs.',
-    );
+  if (origenActual() === 'supabase') {
+    throw new Error('El origen supabase requiere await inicializarDatos() al arrancar el servidor.');
   }
-
   instancia = validarRepositorio(crearRepositorioMemoria(), 'memoria');
   return instancia;
 }

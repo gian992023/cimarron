@@ -25,8 +25,11 @@
     <button data-vista="asistente" class="nav-boton">Asistente IA</button>
     <button data-vista="verificar" class="nav-boton">Sello</button>
     <button data-vista="solicitudes" class="nav-boton">Mis solicitudes</button>
+    <button data-vista="admin" class="nav-boton nav-admin" hidden>Admin</button>
+    <button data-vista="cuenta" class="nav-boton">Cuenta</button>
   </nav>
   <div class="estado" id="estado">conectando...</div>
+  <button class="sesion-chip" id="sesion-chip" data-vista="cuenta" hidden></button>
 </header>
 
 <main class="contenido">
@@ -108,6 +111,81 @@
     </div>
   </section>
 
+  <!-- ============ CUENTA (registro / login) ============ -->
+  <section class="vista" id="vista-cuenta">
+    <div class="tarjeta-centrada" id="cuenta-sesion" hidden>
+      <h2>Tu cuenta</h2>
+      <div id="cuenta-datos"></div>
+      <button class="boton-secundario" id="cerrar-sesion">Cerrar sesión</button>
+    </div>
+
+    <div class="tarjeta-centrada" id="cuenta-formularios">
+      <h2>Entra o regístrate</h2>
+      <div class="chips" id="cuenta-tabs">
+        <button class="chip activo" data-tab="login">Iniciar sesión</button>
+        <button class="chip" data-tab="cliente">Soy cliente</button>
+        <button class="chip" data-tab="negocio">Registrar mi negocio</button>
+      </div>
+
+      <form class="formulario-flujo cuenta-form" id="form-login" data-tab="login">
+        <p class="texto-tenue">Entra con el correo o teléfono con que te registraste. Demo: <b>cliente@cimarron.co</b> o <b>admin@cimarron.co</b>.</p>
+        <div class="campo"><label for="l-contacto">Correo o teléfono</label><input id="l-contacto" type="text" autocomplete="username"/></div>
+        <div class="error-form" id="err-login"></div>
+        <button class="boton-principal" type="submit">Entrar</button>
+      </form>
+
+      <form class="formulario-flujo cuenta-form" id="form-cliente" data-tab="cliente" hidden>
+        <p class="texto-tenue">Con tu nombre y un correo o teléfono quedas registrado. La dirección sirve para tus domicilios.</p>
+        <div class="campo"><label for="c-nombre">Nombre</label><input id="c-nombre" type="text"/></div>
+        <div class="dos-columnas">
+          <div class="campo"><label for="c-email">Correo (opcional)</label><input id="c-email" type="email"/></div>
+          <div class="campo"><label for="c-telefono">Teléfono</label><input id="c-telefono" type="tel" inputmode="numeric"/></div>
+        </div>
+        <div class="campo"><label for="c-direccion">Dirección (para domicilios)</label><input id="c-direccion" type="text"/></div>
+        <div class="error-form" id="err-cliente"></div>
+        <button class="boton-principal" type="submit">Crear mi cuenta</button>
+      </form>
+
+      <form class="formulario-flujo cuenta-form" id="form-negocio" data-tab="negocio" hidden>
+        <p class="texto-tenue">Elige tu sector; los campos se ajustan. Tu negocio pasa a revisión del administrador antes de publicarse.</p>
+        <div class="campo"><label for="n-sector">Sector</label>
+          <select id="n-sector" class="select-full">
+            <option value="comercio">🧺 Comercio</option>
+            <option value="turismo">🌄 Turismo</option>
+            <option value="agro">🐂 Agropecuario</option>
+          </select>
+        </div>
+        <div class="campo"><label for="n-nombre">Nombre del negocio</label><input id="n-nombre" type="text"/></div>
+        <div class="dos-columnas">
+          <div class="campo"><label for="n-responsable">Responsable</label><input id="n-responsable" type="text"/></div>
+          <div class="campo"><label for="n-telefono">Teléfono de contacto</label><input id="n-telefono" type="tel" inputmode="numeric"/></div>
+        </div>
+        <div class="dos-columnas">
+          <div class="campo"><label for="n-municipio">Municipio</label><input id="n-municipio" type="text" placeholder="Yopal, Aguazul..."/></div>
+          <div class="campo" id="campo-categoria"><label for="n-categoria">Categoría</label>
+            <select id="n-categoria" class="select-full"></select>
+          </div>
+        </div>
+        <div class="campo"><label for="n-direccion">Dirección</label><input id="n-direccion" type="text"/></div>
+        <div class="campo"><label for="n-qr">Enlace de tu QR de pago Bre-B (opcional)</label><input id="n-qr" type="url" placeholder="https://..."/></div>
+        <div class="error-form" id="err-negocio"></div>
+        <button class="boton-principal" type="submit">Registrar mi negocio</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN ============ -->
+  <section class="vista" id="vista-admin">
+    <div class="tarjeta-centrada">
+      <h2>Panel del administrador</h2>
+      <div class="admin-resumen" id="admin-resumen"></div>
+      <h3 class="admin-sub">Negocios por aprobar</h3>
+      <div id="admin-pendientes"></div>
+      <h3 class="admin-sub">Clientes registrados</h3>
+      <div id="admin-clientes"></div>
+    </div>
+  </section>
+
   <!-- ============ MIS SOLICITUDES ============ -->
   <section class="vista" id="vista-solicitudes">
     <div class="tarjeta-centrada">
@@ -128,8 +206,9 @@
   <button data-vista="explorar" class="activo"><span>🧭</span>Explorar</button>
   <button data-vista="mapa"><span>🗺️</span>Mapa</button>
   <button data-vista="asistente"><span>💬</span>Asistente</button>
-  <button data-vista="verificar"><span>🛡️</span>Sello</button>
   <button data-vista="solicitudes"><span>📋</span>Pedidos</button>
+  <button data-vista="admin" class="nav-admin" hidden><span>🛠️</span>Admin</button>
+  <button data-vista="cuenta"><span>👤</span>Cuenta</button>
 </nav>
 
 <!-- Botón flotante del asistente (visible en Explorar) -->
