@@ -74,7 +74,8 @@ const datos = {
   mapa: MAPA_CASANARE,
   config: {
     llave: '@cimarron', titular: 'CIMARRON', qr: 'assets/qr-breb.png',
-    apiBase: '', // URL del backend del agente (Render) para el asistente en Pages. Vacío = agente solo en localhost.
+    // URL del backend del agente (Render) para el asistente en Pages. Vacío = agente solo en localhost.
+    apiBase: process.env.CIMARRON_API_BASE || 'https://cimarron-4vkt.onrender.com',
   },
 };
 writeFileSync(

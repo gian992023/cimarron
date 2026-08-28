@@ -26,7 +26,7 @@ services:
       - key: ANTHROPIC_API_KEY
         sync: false # se ingresa a mano en el dashboard: nunca en el repo
       - key: CIMARRON_MODELO
-        value: claude-opus-5
+        value: claude-sonnet-5
       - key: CIMARRON_ESFUERZO
         value: medium
       - key: CIMARRON_ORIGEN_DATOS

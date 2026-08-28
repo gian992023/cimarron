@@ -1,4 +1,4 @@
-// EL AGENTE: bucle de tool use sobre Claude Opus 5.
+// EL AGENTE: bucle de tool use sobre Claude Sonnet 5 (configurable con CIMARRON_MODELO).
 //
 // PATRÓN TOMADO DE PETRASERVIS (supabase/functions/chat-ia/index.ts).
 //
@@ -49,7 +49,7 @@ function anthropic() {
 
 function parametros(mensajes) {
   return {
-    model: process.env.CIMARRON_MODELO || 'claude-opus-5',
+    model: process.env.CIMARRON_MODELO || 'claude-sonnet-5',
     max_tokens: 16000,
     system: construirPrompt(),
     tools: HERRAMIENTAS,

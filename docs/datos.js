@@ -8795,7 +8795,7 @@ window.CIMARRON_DATOS = {
     },
     {
       "activo": true,
-      "codigoSello": "LLA-132D85",
+      "codigoSello": "LLA-5905B3",
       "id": "itm_chinchorro",
       "negocioId": "neg_moriche",
       "tipo": "producto",
@@ -8833,7 +8833,7 @@ window.CIMARRON_DATOS = {
     },
     {
       "activo": true,
-      "codigoSello": "LLA-8178F5",
+      "codigoSello": "LLA-85E73C",
       "id": "itm_queso",
       "negocioId": "neg_corozo",
       "tipo": "producto",
@@ -8869,7 +8869,7 @@ window.CIMARRON_DATOS = {
     },
     {
       "activo": true,
-      "codigoSello": "LLA-4742E4",
+      "codigoSello": "LLA-77A8E1",
       "id": "itm_safari",
       "negocioId": "neg_hato_aurora",
       "tipo": "servicio",
@@ -9057,8 +9057,8 @@ window.CIMARRON_DATOS = {
   ],
   "sellos": [
     {
-      "codigo": "LLA-132D85",
-      "emitidoEn": "2026-08-28T11:53:37.869Z",
+      "codigo": "LLA-5905B3",
+      "emitidoEn": "2026-08-28T12:28:59.675Z",
       "producto": "Chinchorro de moriche",
       "negocio": "Tejidos El Moriche",
       "municipio": "Yopal",
@@ -9069,11 +9069,11 @@ window.CIMARRON_DATOS = {
       "materiales": "Fibra de palma de moriche",
       "sostenibilidad": null,
       "hashAnterior": "0000000000000000000000000000000000000000000000000000000000000000",
-      "hash": "01b418dce57059cd48dc14b4e6d644bca09d8bdfcf207e58942ce2c26fc16a2c"
+      "hash": "154e39e71bb944942c4d86909e9595db7c1d76f01f79f24bf152b54e1c13d4b0"
     },
     {
-      "codigo": "LLA-8178F5",
-      "emitidoEn": "2026-08-28T11:53:37.871Z",
+      "codigo": "LLA-85E73C",
+      "emitidoEn": "2026-08-28T12:28:59.676Z",
       "producto": "Queso llanero de finca (libra)",
       "negocio": "Lácteos El Corozo",
       "municipio": "Aguazul",
@@ -9083,12 +9083,12 @@ window.CIMARRON_DATOS = {
       "tecnica": "Cuajado artesanal en frío",
       "materiales": "Leche entera de vacas de sabana",
       "sostenibilidad": null,
-      "hashAnterior": "01b418dce57059cd48dc14b4e6d644bca09d8bdfcf207e58942ce2c26fc16a2c",
-      "hash": "4cc5d5e9ee3f04a948c2922b10959e3cbe9b07e4c9ffa3da98ba848ce16dc91d"
+      "hashAnterior": "154e39e71bb944942c4d86909e9595db7c1d76f01f79f24bf152b54e1c13d4b0",
+      "hash": "18d64d79f603e614940ef1564316762f8dfa53305fd2541bdaa8365f7a1d6953"
     },
     {
-      "codigo": "LLA-4742E4",
-      "emitidoEn": "2026-08-28T11:53:37.871Z",
+      "codigo": "LLA-77A8E1",
+      "emitidoEn": "2026-08-28T12:28:59.676Z",
       "producto": "Safari llanero de un día",
       "negocio": "Hato La Aurora Experiencias",
       "municipio": "Paz de Ariporo",
@@ -9098,8 +9098,8 @@ window.CIMARRON_DATOS = {
       "tecnica": "Turismo de naturaleza en hato ganadero activo",
       "materiales": null,
       "sostenibilidad": "Hato en modelo de conservación de fauna de sabana inundable",
-      "hashAnterior": "4cc5d5e9ee3f04a948c2922b10959e3cbe9b07e4c9ffa3da98ba848ce16dc91d",
-      "hash": "5c59cbaf67e9af326b3cdb58c471087fba6f9f421ecbc1dd4de3cb89024525f8"
+      "hashAnterior": "18d64d79f603e614940ef1564316762f8dfa53305fd2541bdaa8365f7a1d6953",
+      "hash": "37945d01e426fefb158d4c8a9991f464c3fc34cb2b36e74995200e90723c73fd"
     }
   ],
   "referencias": {
@@ -9303,6 +9303,6 @@ window.CIMARRON_DATOS = {
     "llave": "@cimarron",
     "titular": "CIMARRON",
     "qr": "assets/qr-breb.png",
-    "apiBase": ""
+    "apiBase": "https://cimarron-4vkt.onrender.com"
   }
 };

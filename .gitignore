@@ -2,6 +2,13 @@ node_modules/
 .env
 .env.local
 *.log
+
+# Claves y secretos: NUNCA se suben al repositorio
+api_key_anthopic.txt
+*api_key*
+*.key
+*.pem
+secret*.txt
 .DS_Store
 Thumbs.db
 

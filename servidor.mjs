@@ -148,7 +148,7 @@ const servidor = createServer(async (req, res) => {
     return responder(res, 200, {
       ok: true,
       proyecto: 'CIMARRÓN',
-      modelo: process.env.CIMARRON_MODELO || 'claude-opus-5',
+      modelo: process.env.CIMARRON_MODELO || 'claude-sonnet-5',
       esfuerzo: process.env.CIMARRON_ESFUERZO || 'medium',
       origen_datos: origenActual(),
       llave_configurada: metodoAuth() !== null,
@@ -264,7 +264,7 @@ servidor.listen(PUERTO, () => {
   console.log('  CIMARRÓN  ·  Agente de IA para la cadena productiva del llano');
   console.log('  ─────────────────────────────────────────────────────────────');
   console.log(`  Interfaz:      http://localhost:${PUERTO}`);
-  console.log(`  Modelo:        ${process.env.CIMARRON_MODELO || 'claude-opus-5'}`);
+  console.log(`  Modelo:        ${process.env.CIMARRON_MODELO || 'claude-sonnet-5'}`);
   console.log(`  Origen datos:  ${origenActual()}`);
   console.log(`  Llave API:     ${listo ? 'configurada' : 'FALTA (revisa .env)'}`);
   console.log('');
