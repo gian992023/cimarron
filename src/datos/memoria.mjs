@@ -6,8 +6,10 @@
 //
 // Al arrancar, emite el Sello Llanero de los ítems que traen `certificacion`
 // en las semillas, así el verificador tiene cadena real desde el segundo cero.
+//
+// La data sale de fuente.mjs: la importada real si existe, o los ejemplos.
 
-import { NEGOCIOS, ITEMS } from './semillas.mjs';
+import { NEGOCIOS, ITEMS } from './fuente.mjs';
 import { generarId } from '../nucleo/id.mjs';
 import { emitirSello, raizDeCadena } from '../nucleo/sello.mjs';
 

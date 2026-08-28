@@ -10,7 +10,9 @@
   "scripts": {
     "start": "node servidor.mjs",
     "dev": "node --watch servidor.mjs",
-    "build:docs": "node scripts/build-docs.mjs"
+    "build:docs": "node scripts/build-docs.mjs",
+    "convertir": "python scripts/convertir_baul.py",
+    "importar": "node scripts/importar-datos.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.70.0"

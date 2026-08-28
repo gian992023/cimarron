@@ -81,6 +81,7 @@ const API = {
       const q = new URLSearchParams();
       if (params.sector) q.set('sector', params.sector);
       if (params.tipo) q.set('tipo', params.tipo);
+      if (params.categoria) q.set('categoria', params.categoria);
       if (params.q) q.set('q', params.q);
       return (await (await fetch(`/api/catalogo?${q}`)).json()).items || [];
     }
@@ -89,6 +90,7 @@ const API = {
       i.activo &&
       (!params.sector || i.sector === params.sector) &&
       (!params.tipo || i.tipo === params.tipo) &&
+      (!params.categoria || i.categoria === params.categoria) &&
       (!b || _normalizar(`${i.nombre} ${i.descripcion} ${i.categoria}`).includes(b)));
   },
 
@@ -119,6 +121,19 @@ const API = {
       emitidoEn: sello.emitidoEn, hash: sello.hash,
       integridadCadena: cadena.valida ? 'intacta' : cadena.motivo, sellosEnCadena: DATOS.sellos.length,
     };
+  },
+
+  async negocios(sector) {
+    if (!ESTATICO) {
+      const q = sector ? `?sector=${sector}` : '';
+      return (await (await fetch(`/api/negocios${q}`)).json()).negocios || [];
+    }
+    return DATOS.negocios.filter((n) => !sector || n.sector === sector);
+  },
+
+  async taxonomia() {
+    if (!ESTATICO) return (await fetch('/api/taxonomia')).json();
+    return { municipios: DATOS.municipios || {}, sectores: DATOS.categorias || {}, mapa: DATOS.mapa };
   },
 };
 
@@ -188,6 +203,7 @@ function _crearSolicitudLocal(c) {
 const estado = {
   sector: '',
   tipo: '',
+  categoria: '',
   busqueda: '',
   items: [],
   vista: 'explorar',
@@ -223,6 +239,7 @@ function irA(vista) {
   });
   $('flotante').style.display = vista === 'asistente' ? 'none' : '';
   if (vista === 'asistente') $('mensaje').focus();
+  if (vista === 'mapa') iniciarMapa();
 }
 
 document.querySelectorAll('[data-vista]').forEach((b) => {
@@ -238,12 +255,27 @@ async function cargarCatalogo() {
     estado.items = await API.catalogo({
       sector: estado.sector || undefined,
       tipo: estado.tipo || undefined,
+      categoria: estado.categoria || undefined,
       q: estado.busqueda || undefined,
     });
   } catch {
     estado.items = [];
   }
   pintarRejilla();
+}
+
+// Llena el selector de categorías con las categorías presentes en el sector activo.
+async function poblarCategorias() {
+  const sel = $('filtro-categoria');
+  const items = await API.catalogo({ sector: estado.sector || undefined });
+  const cats = [...new Set(items.map((i) => i.categoria).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todas las categorías</option>';
+  for (const c of cats) {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  }
+  estado.categoria = '';
 }
 
 function pintarRejilla() {
@@ -280,12 +312,18 @@ function pintarRejilla() {
 
 // filtros
 document.querySelectorAll('.sector').forEach((b) => {
-  b.addEventListener('click', () => {
+  b.addEventListener('click', async () => {
     document.querySelector('.sector.activo')?.classList.remove('activo');
     b.classList.add('activo');
     estado.sector = b.dataset.sector;
+    await poblarCategorias();
     cargarCatalogo();
   });
+});
+
+$('filtro-categoria').addEventListener('change', (e) => {
+  estado.categoria = e.target.value;
+  cargarCatalogo();
 });
 
 document.querySelectorAll('#chips-tipo .chip').forEach((b) => {
@@ -511,19 +549,24 @@ function pintarTraza(pasos) {
   traza.scrollTop = traza.scrollHeight;
 }
 
+// Base del backend del agente: mismo origen con servidor; la URL de Render (si
+// está configurada en datos.js) cuando la web es estática en GitHub Pages.
+const AGENTE_BASE = ESTATICO ? ((DATOS.config && DATOS.config.apiBase) || '') : '';
+const AGENTE_DISPONIBLE = !ESTATICO || !!AGENTE_BASE;
+
 async function enviarAlAgente(texto) {
   if (estado.chatOcupado || !texto.trim()) return;
 
-  // En GitHub Pages no hay servidor ni llave: el agente en vivo corre en localhost.
-  if (ESTATICO) {
+  // Sin backend (Pages sin apiBase): el agente en vivo corre en localhost o Render.
+  if (!AGENTE_DISPONIBLE) {
     burbuja(texto, 'persona');
     $('sugerencias').innerHTML = '';
     burbuja(
-      'Estás viendo la versión pública (GitHub Pages), donde el catálogo, los pedidos, ' +
+      'Estás viendo la versión pública (GitHub Pages), donde el catálogo, el mapa, los pedidos, ' +
         'las reservas, los agendamientos y la verificación de sello funcionan de verdad.\n\n' +
-        'El asistente de IA en vivo corre sobre el servidor local (por seguridad, la llave del ' +
-        'modelo nunca va en una página pública). Para la demo conversacional, ejecuta el proyecto ' +
-        'con "node servidor.mjs" y entra a localhost.',
+        'El asistente de IA en vivo necesita un servidor con la llave del modelo (que por seguridad ' +
+        'nunca va en una página pública). Está a un paso: cuando el backend esté desplegado en Render, ' +
+        'este mismo chat responde aquí. Mientras tanto corre "npm start" y entra a localhost.',
       'agente',
     );
     return;
@@ -539,7 +582,7 @@ async function enviarAlAgente(texto) {
   estado.historial.push({ role: 'user', content: texto });
 
   try {
-    const r = await fetch('/api/agente', {
+    const r = await fetch(`${AGENTE_BASE}/api/agente`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mensajes: estado.historial }),
@@ -567,6 +610,89 @@ $('formulario-chat').addEventListener('submit', (e) => {
   e.preventDefault();
   enviarAlAgente($('mensaje').value);
 });
+
+/* ================================================================ */
+/* Mapa de Casanare (Leaflet + OpenStreetMap)                       */
+/* ================================================================ */
+
+let mapa = null;
+let capaMarcadores = null;
+let negociosMapa = [];
+let mapaListo = false;
+
+const COLOR_SECTOR = { comercio: 'comercio', turismo: 'turismo', agro: 'agro' };
+
+function iconoNegocio(sector) {
+  return L.divIcon({
+    className: '',
+    html: `<div class="marcador-punto marcador-${COLOR_SECTOR[sector] || 'comercio'}"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 16],
+    popupAnchor: [0, -16],
+  });
+}
+
+async function iniciarMapa() {
+  if (typeof L === 'undefined') return; // Leaflet no cargó (sin conexión al CDN)
+  if (!mapa) {
+    const tax = await API.taxonomia();
+    const centro = tax.mapa?.centro || { lat: 5.35, lng: -71.9 };
+    mapa = L.map('mapa', { scrollWheelZoom: true }).setView([centro.lat, centro.lng], tax.mapa?.zoom || 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap',
+    }).addTo(mapa);
+    // Agrupa los pines cercanos (cluster) si el plugin cargó; si no, capa simple.
+    capaMarcadores = (typeof L.markerClusterGroup === 'function')
+      ? L.markerClusterGroup({ maxClusterRadius: 45, showCoverageOnHover: false })
+      : L.layerGroup();
+    capaMarcadores.addTo(mapa);
+
+    // llenar el filtro de municipios
+    const sel = $('mapa-municipio');
+    for (const nombre of Object.keys(tax.municipios || {})) {
+      const o = document.createElement('option');
+      o.value = nombre; o.textContent = nombre;
+      sel.appendChild(o);
+    }
+    $('mapa-sector').addEventListener('change', pintarMarcadores);
+    $('mapa-municipio').addEventListener('change', pintarMarcadores);
+    mapaListo = true;
+  }
+  // Leaflet necesita recalcular tamaño al mostrarse dentro de una vista oculta
+  setTimeout(() => mapa.invalidateSize(), 60);
+  await cargarNegociosMapa();
+}
+
+async function cargarNegociosMapa() {
+  negociosMapa = await API.negocios();
+  pintarMarcadores();
+}
+
+function pintarMarcadores() {
+  if (!mapaListo) return;
+  const sector = $('mapa-sector').value;
+  const municipio = $('mapa-municipio').value;
+  capaMarcadores.clearLayers();
+  let n = 0;
+  for (const neg of negociosMapa) {
+    if (sector && neg.sector !== sector) continue;
+    if (municipio && neg.municipio !== municipio) continue;
+    if (!neg.ubicacion) continue;
+    const m = L.marker([neg.ubicacion.lat, neg.ubicacion.lng], { icon: iconoNegocio(neg.sector) });
+    const emoji = { comercio: '🧺', turismo: '🌄', agro: '🐂' }[neg.sector] || '';
+    m.bindPopup(
+      `<b>${neg.nombre}</b><br>` +
+      `<span class="sec">${emoji} ${neg.sector}${neg.categoria ? ' · ' + neg.categoria : ''} · ${neg.municipio}</span>` +
+      (neg.direccion ? `<br>${neg.direccion}` : '') +
+      (neg.telefono ? `<br>📞 ${neg.telefono}` : ''),
+    );
+    m.addTo(capaMarcadores);
+    n++;
+  }
+  $('mapa-conteo').textContent = `${n} negocio${n === 1 ? '' : 's'} en el mapa` +
+    (sector ? ` · sector ${sector}` : '') + (municipio ? ` · ${municipio}` : '');
+}
 
 /* ================================================================ */
 /* Verificador de sello                                             */
@@ -680,4 +806,5 @@ burbuja(
   'agente',
 );
 pintarSugerencias();
+poblarCategorias();
 cargarCatalogo();

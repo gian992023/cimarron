@@ -15,9 +15,10 @@ import { writeFileSync, mkdirSync, copyFileSync, readFileSync, existsSync } from
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { NEGOCIOS, ITEMS } from '../src/datos/semillas.mjs';
+import { NEGOCIOS, ITEMS } from '../src/datos/fuente.mjs';
 import { emitirSello, raizDeCadena } from '../src/nucleo/sello.mjs';
 import { REFERENCIAS_CASANARE } from '../src/nucleo/geocerca.mjs';
+import { MUNICIPIOS, MAPA_CASANARE, SECTORES_META } from '../src/nucleo/taxonomia.mjs';
 import { formatearCOP } from '../src/nucleo/formato.mjs';
 import { tipoSolicitudParaItem } from '../src/servicios/flujo.mjs';
 
@@ -56,7 +57,7 @@ const itemsWeb = items.map((i) => {
     municipio: n?.municipio,
     sector: n?.sector,
     radioCoberturaKm: n?.radioCoberturaKm ?? 0,
-    precio: formatearCOP(i.precioCop),
+    precio: i.precioCop == null ? 'A convenir' : formatearCOP(i.precioCop),
   };
   enriquecido.flujo = tipoSolicitudParaItem(enriquecido);
   return enriquecido;
@@ -68,7 +69,13 @@ const datos = {
   items: itemsWeb,
   sellos,
   referencias: REFERENCIAS_CASANARE,
-  config: { llave: '@cimarron', titular: 'CIMARRON', qr: 'assets/qr-breb.png' },
+  municipios: MUNICIPIOS,
+  categorias: SECTORES_META,
+  mapa: MAPA_CASANARE,
+  config: {
+    llave: '@cimarron', titular: 'CIMARRON', qr: 'assets/qr-breb.png',
+    apiBase: '', // URL del backend del agente (Render) para el asistente en Pages. Vacío = agente solo en localhost.
+  },
 };
 writeFileSync(
   join(DOCS, 'datos.js'),

@@ -41,6 +41,7 @@ const { formatearCOP, formatearNumeroSolicitud, formatearFechaHora } = await imp
   './src/nucleo/formato.mjs'
 );
 const { ETIQUETAS } = await import('./src/nucleo/estadosSolicitud.mjs');
+const { MUNICIPIOS, SECTORES_META, MAPA_CASANARE } = await import('./src/nucleo/taxonomia.mjs');
 
 const PUERTO = Number(process.env.PUERTO || 8787);
 
@@ -57,8 +58,16 @@ const TIPOS = {
   '.ico': 'image/x-icon',
 };
 
+// CORS abierto en /api: el frente en GitHub Pages (otro origen) debe poder
+// llamar al agente cuando el backend corre en Render.
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+};
+
 function responder(res, codigo, cuerpo, tipo = 'application/json; charset=utf-8') {
-  res.writeHead(codigo, { 'Content-Type': tipo, 'Cache-Control': 'no-store' });
+  res.writeHead(codigo, { 'Content-Type': tipo, 'Cache-Control': 'no-store', ...CORS });
   res.end(typeof cuerpo === 'string' || Buffer.isBuffer(cuerpo) ? cuerpo : JSON.stringify(cuerpo));
 }
 
@@ -93,6 +102,31 @@ async function servirEstatico(res, rutaUrl) {
 const servidor = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const ruta = url.pathname;
+
+  // Preflight CORS para el agente llamado desde otro origen (Pages -> Render).
+  if (req.method === 'OPTIONS' && ruta.startsWith('/api/')) {
+    res.writeHead(204, CORS);
+    return res.end();
+  }
+
+  // --- API: negocios (para el mapa) ---
+  if (ruta === '/api/negocios' && req.method === 'GET') {
+    const negs = await repositorio().listarNegocios({
+      sector: url.searchParams.get('sector') || undefined,
+    });
+    return responder(res, 200, {
+      negocios: negs.map((n) => ({
+        id: n.id, nombre: n.nombre, sector: n.sector, categoria: n.categoria || null,
+        municipio: n.municipio, telefono: n.telefono || null, sitioWeb: n.sitioWeb || null,
+        direccion: n.direccion || null, ubicacion: n.ubicacion,
+      })),
+    });
+  }
+
+  // --- API: taxonomía (municipios y categorías para filtros y mapa) ---
+  if (ruta === '/api/taxonomia' && req.method === 'GET') {
+    return responder(res, 200, { municipios: MUNICIPIOS, sectores: SECTORES_META, mapa: MAPA_CASANARE });
+  }
 
   // --- API: estado del sistema ---
   if (ruta === '/api/estado') {

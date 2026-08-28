@@ -52,7 +52,7 @@ export async function catalogo(filtro = {}) {
   const items = await db.listarItems(filtro);
   return items.map((i) => ({
     ...i,
-    precio: formatearCOP(i.precioCop),
+    precio: i.precioCop == null ? 'A convenir' : formatearCOP(i.precioCop),
     flujo: tipoSolicitudParaItem(i),
   }));
 }
@@ -157,12 +157,13 @@ export async function crearSolicitudCompleta(entrada) {
     }
   }
 
+  const totalCop = item.precioCop == null ? null : item.precioCop * cantidad;
   const solicitud = await db.crearSolicitud({
     tipo,
     negocioId: item.negocioId,
     itemId: item.id,
     cantidad,
-    totalCop: item.precioCop * cantidad,
+    totalCop,
     cliente,
     telefono,
     estado: estadoInicial(tipo),
@@ -175,7 +176,7 @@ export async function crearSolicitudCompleta(entrada) {
       numeroLegible: formatearNumeroSolicitud(tipo, solicitud.numero),
       itemNombre: item.nombre,
       negocioNombre: item.negocioNombre,
-      total: formatearCOP(solicitud.totalCop),
+      total: solicitud.totalCop == null ? 'A convenir con el negocio' : formatearCOP(solicitud.totalCop),
       codigoSello: item.codigoSello,
     },
     pago: await instruccionPagoBreB(solicitud.id),
@@ -183,28 +184,57 @@ export async function crearSolicitudCompleta(entrada) {
   };
 }
 
-/** Genera (o recupera) la instrucción de pago Bre-B de una solicitud. */
+/**
+ * Genera (o recupera) la instrucción de pago de una solicitud.
+ * Dos métodos: Bre-B por llave del negocio, y contraentrega (solo comercio).
+ * Si el negocio trae su propia llave Bre-B se usa esa; si no, la de la plataforma.
+ */
 export async function instruccionPagoBreB(solicitudId) {
   const db = repositorio();
   const s = await db.obtenerSolicitud(solicitudId);
   if (!s) return { error: 'Esa solicitud no existe.' };
 
+  const negocio = await db.obtenerNegocio(s.negocioId);
+  const pago = negocio?.pago || { breb: true, contraentrega: negocio?.sector === 'comercio' };
+
   const referencia = s.referenciaPago || generarReferenciaPago();
   if (!s.referenciaPago) await db.actualizarSolicitud(s.id, { referenciaPago: referencia });
 
   const c = configPago();
+  const llave = negocio?.brebLlave || c.llave;
+  const titular = negocio?.nombre || c.titular;
+  const qr = negocio?.brebQr || c.qr;
+  const montoTxt = s.totalCop == null ? 'el valor que acuerdes con el negocio' : formatearCOP(s.totalCop);
+
+  const metodos = [];
+  if (pago.breb !== false) {
+    metodos.push({
+      tipo: 'bre-b',
+      etiqueta: 'Pago por Bre-B',
+      llave, titular, qr_url: qr, referencia,
+      instruccion:
+        `Escanea el QR desde Nequi, Bancolombia o tu banco, o busca la llave ${llave}. ` +
+        `Transfiere ${montoTxt} y escribe la referencia ${referencia} en el mensaje.`,
+    });
+  }
+  if (pago.contraentrega) {
+    metodos.push({
+      tipo: 'contraentrega',
+      etiqueta: 'Pago contraentrega',
+      instruccion: `Pagas en efectivo cuando recibes el pedido. Cita la referencia ${referencia}.`,
+    });
+  }
+
   return {
-    metodo: 'Bre-B',
-    llave: c.llave,
-    titular: c.titular,
-    qr_url: c.qr,
-    monto: formatearCOP(s.totalCop),
+    // Campos planos para compatibilidad (primer método): Bre-B si existe.
+    metodo: metodos[0]?.tipo === 'bre-b' ? 'Bre-B' : 'Contraentrega',
+    llave, titular, qr_url: qr,
+    monto: montoTxt,
     montoCop: s.totalCop,
     referencia,
     numeroLegible: formatearNumeroSolicitud(s.tipo, s.numero),
-    instruccion:
-      `Escanea el QR desde Nequi, Bancolombia o tu banco, o busca la llave ${c.llave}. ` +
-      `Transfiere ${formatearCOP(s.totalCop)} y escribe la referencia ${referencia} en el mensaje.`,
+    instruccion: metodos[0]?.instruccion,
+    metodos, // lista completa para la interfaz
     whatsappSoporte: c.soporte ? `https://wa.me/${c.soporte}` : null,
   };
 }
