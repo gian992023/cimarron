@@ -167,8 +167,8 @@ function _crearSolicitudLocal(c) {
     return { dist, dentro: dist <= (negocio.radioCoberturaKm || 0) };
   };
 
-  if (tipo === 'pedido') {
-    if (!c.lugar) return { error: 'Falta el lugar de entrega.' };
+  if (tipo === 'pedido' && c.entrega !== 'recoger') {
+    if (!c.lugar) return { error: 'Falta tu dirección para el envío (barrio o municipio).' };
     const e = evaluar(c.lugar);
     if (e.error) return e;
     if (!e.dentro) avisos.push(`Queda a ${e.dist} km y el radio de entrega es ${negocio.radioCoberturaKm} km: se recoge en el punto o se coordina envío.`);
@@ -648,8 +648,8 @@ function mostrarPago({ solicitud, pago, avisos }) {
       <div class="numero">Solicitud <b>${solicitud.numeroLegible}</b> · ${solicitud.itemNombre}</div>
       <div class="total">${pago.monto}</div>
       <img src="${pago.qr_url}" alt="QR Bre-B"
-           onerror="this.outerHTML='<div class=&quot;sin-qr&quot;>El QR de Bre-B aún no está cargado.<br>Paga con la llave de abajo.</div>'" />
-      <div class="llave">Llave Bre-B: <b>${pago.llave}</b> (${pago.titular})</div>
+           onerror="this.outerHTML='<div class=&quot;sin-qr&quot;>El QR de Bre-B aún no está cargado.</div>'" />
+      <div class="texto-tenue" style="margin:6px 0 2px">Escanea este QR para pagar por Bre-B</div>
       <div>Referencia obligatoria:</div>
       <div class="referencia">${pago.referencia}</div>
       <div class="texto-tenue">Escanea desde Nequi, Bancolombia o tu banco. Escribe la referencia en el mensaje de la transferencia.</div>
@@ -867,6 +867,7 @@ function pintarMarcadores() {
       `<br><button class="popup-ver" type="button">Ver negocio</button>`;
     popup.querySelector('.popup-ver').addEventListener('click', () => {
       if (mapa) mapa.closePopup();
+      irA('explorar');        // sale del mapa y muestra la hoja a pantalla completa
       abrirNegocio(neg.id);
     });
     m.bindPopup(popup);

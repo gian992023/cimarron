@@ -250,7 +250,8 @@ input { font-family: inherit; }
   position: fixed;
   inset: 0;
   background: rgba(10, 8, 5, 0.72);
-  z-index: 50;
+  /* por encima de Leaflet (sus paneles y controles llegan a ~1000) */
+  z-index: 3000;
   display: grid;
   place-items: end center;
   padding: 0;

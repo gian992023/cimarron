@@ -112,10 +112,15 @@ export async function crearSolicitudCompleta(entrada) {
   const extras = {};
 
   if (tipo === 'pedido') {
+    // Recoger en el local no necesita dirección ni cobertura.
+    if (entrada.entrega === 'recoger') {
+      extras.entrega = 'recoger';
+    } else {
     const lugar = String(entrada.lugar || '').trim();
-    if (!lugar) return { error: 'Falta el lugar de entrega (barrio o municipio).' };
+    if (!lugar) return { error: 'Falta tu dirección para el envío (barrio o municipio).' };
     const c = await cobertura(item.negocioId, lugar);
     if (c.error) return c;
+    extras.entrega = 'domicilio';
     extras.lugar = lugar;
     extras.distanciaKm = c.distanciaKm;
     extras.recogerEnPunto = !c.dentro;
@@ -123,6 +128,7 @@ export async function crearSolicitudCompleta(entrada) {
       avisos.push(
         `Queda a ${c.distancia} y el radio de entrega es ${c.radioKm} km: se recoge en el punto del negocio o se coordina envío.`,
       );
+    }
     }
   }
 
