@@ -17,6 +17,10 @@ const $ = (id) => document.getElementById(id);
 const DATOS = typeof window !== 'undefined' ? window.CIMARRON_DATOS : null;
 const ESTATICO = !!DATOS;
 
+// Estado de favoritos (ids) y número de WhatsApp de contacto (se llena en el arranque).
+let favoritosSet = new Set();
+let whatsappContacto = (DATOS && DATOS.config && DATOS.config.whatsapp) || '573123066149';
+
 /* --- Lógica pura reimplementada para el modo estático --- */
 function _haversineKm(a, b) {
   const R = 6371, rad = (g) => (g * Math.PI) / 180;
@@ -263,6 +267,8 @@ function irA(vista) {
   if (vista === 'asistente') $('mensaje').focus();
   if (vista === 'mapa') iniciarMapa();
   if (vista === 'admin') cargarAdmin();
+  if (vista === 'favoritos') pintarFavoritos();
+  if (vista === 'cuenta' && sesionActual) cargarPerfil();
 }
 
 document.querySelectorAll('[data-vista]').forEach((b) => {
@@ -317,6 +323,7 @@ function pintarRejilla() {
       <div class="portada ${item.sector}">
         ${EMOJI_CATEGORIA[item.categoria] || '🌾'}
         ${item.codigoSello ? '<span class="insignia-sello">🛡 Sello</span>' : ''}
+        <span class="fav-corner${favoritosSet.has(item.id) ? ' activo' : ''}" data-fav="${item.id}" title="Guardar en favoritos" role="button">❤</span>
       </div>
       <div class="cuerpo">
         <h3></h3>
@@ -328,6 +335,7 @@ function pintarRejilla() {
       </div>`;
     t.querySelector('h3').textContent = item.nombre;
     t.querySelector('.quien').textContent = `${item.negocioNombre} · ${item.municipio}`;
+    t.querySelector('.fav-corner').addEventListener('click', (ev) => { ev.stopPropagation(); toggleFavorito(item.id); });
     t.addEventListener('click', () => abrirModal(item));
     rejilla.appendChild(t);
   }
@@ -416,7 +424,10 @@ async function abrirNegocio(id) {
           </div>
           <div class="hoja-item-accion">
             <span class="hoja-precio">${it.precio}${it.precioCop != null ? ` <small>/ ${it.unidad}</small>` : ''}</span>
-            <button class="boton-mini" data-item="${it.id}">${NOMBRE_ACCION[it.flujo] || 'Solicitar'}</button>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="fav-btn${favoritosSet.has(it.id) ? ' activo' : ''}" data-fav="${it.id}" role="button" title="Favorito">❤</span>
+              <button class="boton-mini" data-item="${it.id}">${NOMBRE_ACCION[it.flujo] || 'Solicitar'}</button>
+            </div>
           </div>
         </div>`).join('')
     : '<p class="texto-tenue">Este negocio aún no tiene productos o servicios publicados.</p>';
@@ -436,6 +447,7 @@ async function abrirNegocio(id) {
       <p class="hoja-desc"></p>
       <div class="hoja-datos"></div>
       ${badges.length ? `<div class="hoja-badges">${badges.map((b) => `<span>${b}</span>`).join('')}</div>` : ''}
+      <a class="boton-wa" id="wa-negocio" target="_blank" rel="noopener">🟢 Contactar al negocio por WhatsApp</a>
       <h4 class="hoja-titulo-items">${n.sector === 'turismo' ? 'Disponibilidad' : n.sector === 'agro' ? 'Servicios e insumos' : 'Productos y servicios'}</h4>
       <div class="hoja-items">${filasItems}</div>
     </div>`;
@@ -462,6 +474,16 @@ async function abrirNegocio(id) {
       const it = items.find((x) => x.id === btn.dataset.item);
       if (it) abrirModal(it, n);
     });
+  });
+  // Contacto directo por WhatsApp con el negocio
+  const wa = modal.querySelector('#wa-negocio');
+  if (wa) {
+    const texto = encodeURIComponent(`Hola ${n.nombre}, los vi en CIMARRÓN y quiero preguntar por sus productos/servicios.`);
+    wa.href = `https://wa.me/${whatsappContacto}?text=${texto}`;
+  }
+  // Corazones de favoritos en los ítems de la hoja
+  modal.querySelectorAll('.hoja-item .fav-btn').forEach((sp) => {
+    sp.addEventListener('click', (ev) => { ev.stopPropagation(); toggleFavorito(sp.dataset.fav); });
   });
 }
 
@@ -566,7 +588,10 @@ function abrirModal(item, negocio) {
         <h3></h3>
         <div class="quien"></div>
       </div>
-      <button class="cerrar" aria-label="Cerrar">✕</button>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+        <span class="fav-btn${favoritosSet.has(item.id) ? ' activo' : ''}" data-fav="${item.id}" role="button" title="Guardar en favoritos">❤</span>
+        <button class="cerrar" aria-label="Cerrar">✕</button>
+      </div>
     </div>
     <p class="descripcion"></p>
     ${item.codigoSello ? `<div class="dato-sello">🛡 Sello Llanero <b>${item.codigoSello}</b> · autenticidad verificable en la pestaña Sello</div>` : ''}
@@ -586,6 +611,15 @@ function abrirModal(item, negocio) {
   // Cerrar vuelve a la hoja del negocio si venimos de ella.
   modal.querySelector('.cerrar').addEventListener('click', () =>
     negocio ? abrirNegocio(negocio.id) : cerrarModal());
+  // Favorito del ítem
+  const favSp = modal.querySelector('.encabezado .fav-btn');
+  if (favSp) favSp.addEventListener('click', () => toggleFavorito(item.id));
+  // Autorelleno desde la sesión (si hay)
+  if (sesionActual) {
+    const fn = modal.querySelector('#f-nombre'); if (fn && !fn.value) fn.value = sesionActual.nombre || '';
+    const ft = modal.querySelector('#f-telefono'); if (ft && !ft.value) ft.value = sesionActual.telefono || '';
+    const fl = modal.querySelector('#f-lugar'); if (fl && !fl.value && sesionActual.direccion) fl.value = sesionActual.direccion;
+  }
 
   // Entrega a domicilio: muestra el campo de dirección solo si se elige envío.
   const radios = modal.querySelectorAll('input[name="entrega"]');
@@ -998,12 +1032,10 @@ function reflejarSesion() {
     navAdmin.forEach((b) => (b.hidden = sesionActual.rol !== 'admin'));
     $('cuenta-sesion').hidden = false;
     $('cuenta-formularios').hidden = true;
-    $('cuenta-datos').innerHTML =
-      `<p><b>${sesionActual.nombre}</b> · rol: ${sesionActual.rol}</p>` +
-      `<p class="texto-tenue">${sesionActual.email || ''} ${sesionActual.telefono || ''}` +
-      `${sesionActual.direccion ? ' · ' + sesionActual.direccion : ''}</p>` +
-      (sesionActual.rol === 'admin' ? '<p class="texto-tenue">Tienes el panel de administración en el menú.</p>' : '') +
-      (sesionActual.rol === 'negocio' ? '<p class="texto-tenue">Tu negocio aparece cuando el administrador lo aprueba.</p>' : '');
+    $('perfil-avatar').textContent = AVATAR_ROL[sesionActual.rol] || '👤';
+    $('perfil-nombre').textContent = sesionActual.nombre;
+    $('perfil-rol').textContent = sesionActual.rol;
+    $('cuenta-datos').innerHTML = '';
   } else {
     chip.hidden = true;
     navAdmin.forEach((b) => (b.hidden = true));
@@ -1026,11 +1058,13 @@ if (!ESTATICO) {
   $('form-login').addEventListener('submit', async (e) => {
     e.preventDefault();
     const c = $('l-contacto').value.trim();
-    const cuerpo = c.includes('@') ? { email: c } : { telefono: c };
+    const password = $('l-password').value;
+    const cuerpo = c.includes('@') ? { email: c, password } : { telefono: c.replace(/\D/g, ''), password };
     const { datos } = await apiCuenta('/api/login', cuerpo);
     if (datos.error) { $('err-login').textContent = datos.error; return; }
     guardarSesion(datos.sesion);
-    irA(datos.sesion.rol === 'admin' ? 'admin' : 'explorar');
+    await cargarFavoritos();
+    irA(datos.sesion.rol === 'admin' ? 'admin' : 'cuenta');
   });
 
   // Registro cliente
@@ -1041,10 +1075,13 @@ if (!ESTATICO) {
       email: $('c-email').value.trim() || undefined,
       telefono: $('c-telefono').value.replace(/\D/g, '') || undefined,
       direccion: $('c-direccion').value.trim() || undefined,
+      ciudad: $('c-ciudad').value.trim() || undefined,
+      password: $('c-password').value || undefined,
     });
     if (datos.error) { $('err-cliente').textContent = datos.error; return; }
     guardarSesion(datos.sesion);
-    irA('explorar');
+    await cargarFavoritos();
+    irA('cuenta');
   });
 
   // Registro negocio
@@ -1070,6 +1107,124 @@ if (!ESTATICO) {
 
   $('cerrar-sesion').addEventListener('click', cerrarSesion);
 }
+
+/* ================================================================ */
+/* Favoritos                                                        */
+/* ================================================================ */
+
+const FLUJO_DE = (it) => (it.tipo === 'producto' ? 'pedido' : it.sector === 'turismo' ? 'reserva' : 'agendamiento');
+const _prepararItem = (it) => ({ ...it, precio: it.precio || _cop(it.precioCop), flujo: it.flujo || FLUJO_DE(it) });
+
+async function cargarFavoritos() {
+  if (ESTATICO || !sesionActual) { favoritosSet = new Set(); return; }
+  try {
+    const { datos } = await apiCuenta('/api/favoritos', null, 'GET');
+    favoritosSet = new Set((datos.favoritos || []).map((f) => f.id));
+  } catch { favoritosSet = new Set(); }
+  document.querySelectorAll('[data-fav]').forEach((b) => b.classList.toggle('activo', favoritosSet.has(b.dataset.fav)));
+}
+
+async function toggleFavorito(itemId) {
+  if (ESTATICO) return;
+  if (!sesionActual) { alert('Inicia sesión para guardar favoritos.'); irA('cuenta'); return; }
+  const activo = favoritosSet.has(itemId);
+  const { datos } = await apiCuenta('/api/favoritos', { itemId }, activo ? 'DELETE' : 'POST');
+  if (datos && datos.favoritos) favoritosSet = new Set(datos.favoritos.map((f) => f.id));
+  else if (activo) favoritosSet.delete(itemId); else favoritosSet.add(itemId);
+  document.querySelectorAll(`[data-fav="${itemId}"]`).forEach((b) => b.classList.toggle('activo', favoritosSet.has(itemId)));
+  if ($('vista-favoritos').classList.contains('activa')) pintarFavoritos();
+}
+
+async function pintarFavoritos() {
+  const caja = $('lista-favoritos');
+  if (ESTATICO) { caja.innerHTML = '<p class="texto-tenue">Los favoritos funcionan en la versión con servidor (demo local o Render).</p>'; return; }
+  if (!sesionActual) { caja.innerHTML = '<p class="texto-tenue">Inicia sesión para ver y guardar tus favoritos.</p>'; return; }
+  caja.innerHTML = '<p class="texto-tenue">Cargando...</p>';
+  const { datos } = await apiCuenta('/api/favoritos', null, 'GET');
+  const favs = (datos.favoritos || []).map(_prepararItem);
+  favoritosSet = new Set(favs.map((f) => f.id));
+  if (!favs.length) { caja.innerHTML = '<p class="texto-tenue">Aún no tienes favoritos. Toca el ❤ en cualquier producto o servicio para guardarlo aquí.</p>'; return; }
+  caja.innerHTML = '';
+  for (const it of favs) {
+    const div = document.createElement('div');
+    div.className = 'fav-item';
+    div.innerHTML = `
+      <div class="info">
+        <div class="nom"></div>
+        <div class="det"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <span class="precio-f">${it.precio}</span>
+        <button class="boton-mini" data-pedir="${it.id}">${NOMBRE_ACCION[it.flujo] || 'Pedir'}</button>
+        <span class="fav-btn activo" data-fav="${it.id}" role="button" title="Quitar">❤</span>
+      </div>`;
+    div.querySelector('.nom').textContent = it.nombre;
+    div.querySelector('.det').textContent = `${it.negocioNombre} · ${it.municipio}`;
+    div.querySelector('[data-pedir]').addEventListener('click', () => abrirModal(it));
+    div.querySelector('[data-fav]').addEventListener('click', () => toggleFavorito(it.id));
+    caja.appendChild(div);
+  }
+}
+
+/* ================================================================ */
+/* Perfil por rol                                                   */
+/* ================================================================ */
+
+const AVATAR_ROL = { cliente: '👤', negocio: '🏪', admin: '🛠️' };
+
+async function cargarPerfil() {
+  if (ESTATICO || !sesionActual) return;
+  $('perfil-avatar').textContent = AVATAR_ROL[sesionActual.rol] || '👤';
+  $('perfil-nombre').textContent = sesionActual.nombre;
+  $('perfil-rol').textContent = sesionActual.rol;
+  const cont = $('perfil-contenido');
+  cont.innerHTML = '<p class="texto-tenue">Cargando tu información...</p>';
+  const { datos: p } = await apiCuenta('/api/perfil', null, 'GET');
+  if (!p || p.error) { cont.innerHTML = `<p class="texto-tenue">${p?.error || 'No se pudo cargar el perfil.'}</p>`; return; }
+
+  let html = '';
+  const u = p.usuario;
+  html += `<p class="texto-tenue">${u.email || ''}${u.telefono ? ' · 📞 ' + u.telefono : ''}${u.municipio ? ' · 📍 ' + u.municipio : ''}${u.direccion ? '<br>' + u.direccion : ''}</p>`;
+
+  if (u.rol === 'cliente') {
+    html += `<div class="perfil-seccion"><h3>❤ Favoritos (${(p.favoritos || []).length})</h3>`;
+    html += (p.favoritos || []).length
+      ? (p.favoritos || []).map((f) => `<div class="fav-item"><div class="info"><div class="nom">${_esc(f.nombre)}</div><div class="det">${_esc(f.negocioNombre || '')} · ${_cop(f.precioCop)}</div></div></div>`).join('')
+      : '<p class="texto-tenue">Sin favoritos aún.</p>';
+    html += '</div>';
+    html += `<div class="perfil-seccion"><h3>📋 Mis solicitudes (${(p.solicitudes || []).length})</h3>`;
+    html += (p.solicitudes || []).length
+      ? (p.solicitudes || []).slice(0, 8).map((s) => `<div class="fav-item"><div class="info"><div class="nom">${_esc(s.itemNombre || s.tipo)}</div><div class="det">${_numero(s.tipo, s.numero)} · ${_cop(s.totalCop)}</div></div></div>`).join('')
+      : '<p class="texto-tenue">Aún no has hecho pedidos, reservas ni agendamientos.</p>';
+    html += '</div>';
+  } else if (u.rol === 'negocio') {
+    html += `<div class="perfil-seccion"><h3>🏪 Mis negocios (${(p.negocios || []).length})</h3>`;
+    html += (p.negocios || []).length
+      ? (p.negocios || []).map((n) => `<div class="fav-item"><div class="info"><div class="nom">${_esc(n.nombre)}</div><div class="det">${_esc(n.municipio)} · ${n.items.length} ítem(s) · estado: ${n.estado}</div></div></div>`).join('')
+      : '<p class="texto-tenue">No tienes negocios registrados todavía.</p>';
+    html += '</div>';
+    html += `<div class="perfil-seccion"><h3>📥 Solicitudes recibidas (${(p.solicitudes || []).length})</h3>`;
+    html += (p.solicitudes || []).length
+      ? (p.solicitudes || []).slice(0, 8).map((s) => `<div class="fav-item"><div class="info"><div class="nom">${_esc(s.itemNombre || s.tipo)}</div><div class="det">${_numero(s.tipo, s.numero)} · ${_cop(s.totalCop)} · ${_esc(s.cliente || '')}</div></div></div>`).join('')
+      : '<p class="texto-tenue">Aún no te han llegado solicitudes.</p>';
+    html += '</div>';
+  } else if (u.rol === 'admin' && p.panel) {
+    const r = p.panel.resumen;
+    html += `<div class="perfil-seccion"><h3>🛠️ Resumen de la plataforma</h3>
+      <div class="admin-tiles">
+        <div><b>${r.negocios}</b><span>negocios</span></div>
+        <div><b>${r.aprobados}</b><span>aprobados</span></div>
+        <div><b>${r.pendientes}</b><span>pendientes</span></div>
+        <div><b>${r.clientes}</b><span>clientes</span></div>
+      </div>
+      <button class="boton-secundario" id="ir-admin">Abrir panel de administración</button></div>`;
+  }
+  cont.innerHTML = html;
+  const irAdmin = $('ir-admin');
+  if (irAdmin) irAdmin.addEventListener('click', () => irA('admin'));
+}
+
+function _esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
 
 // Categoría del negocio según el sector elegido
 async function poblarCategoriasNegocio() {
@@ -1134,6 +1289,8 @@ async function decidir(id, decision) {
   const insignia = $('estado');
   try {
     const datos = await API.estado();
+    if (datos.whatsapp_contacto) whatsappContacto = datos.whatsapp_contacto;
+    if (!datos.estatico && sesionActual) cargarFavoritos();
     if (datos.estatico) {
       insignia.textContent = 'demo pública · IA en localhost';
       insignia.className = 'estado';

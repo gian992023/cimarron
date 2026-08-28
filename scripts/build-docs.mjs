@@ -74,6 +74,7 @@ const datos = {
   mapa: MAPA_CASANARE,
   config: {
     llave: '@cimarron', titular: 'CIMARRON', qr: 'assets/qr-breb.png',
+    whatsapp: process.env.WHATSAPP_CONTACTO || '573123066149',
     // URL del backend del agente (Render) para el asistente en Pages. Vacío = agente solo en localhost.
     apiBase: process.env.CIMARRON_API_BASE || 'https://cimarron-4vkt.onrender.com',
   },
@@ -96,12 +97,16 @@ let html = readFileSync(join(WEB, 'index.html'), 'utf8')
   .replace(
     '<script src="/app.js"></script>',
     `<script src="datos.js?v=${v}"></script>\n<script src="app.js?v=${v}"></script>`,
-  );
+  )
+  // rutas absolutas /assets/ -> relativas (Pages sirve bajo /cimarron/)
+  .replace(/(src|href)="\/assets\//g, '$1="assets/');
 writeFileSync(join(DOCS, 'index.html'), html);
 
-/* 6. Copia el QR de Bre-B si ya existe en assets/. */
-const qrOrigen = join(ROOT, 'assets', 'qr-breb.png');
-if (existsSync(qrOrigen)) copyFileSync(qrOrigen, join(DOCS, 'assets', 'qr-breb.png'));
+/* 6. Copia los assets necesarios (QR y logos) si existen. */
+for (const nombre of ['qr-breb.png', 'logo.png', 'logo-emblema.png']) {
+  const origen = join(ROOT, 'assets', nombre);
+  if (existsSync(origen)) copyFileSync(origen, join(DOCS, 'assets', nombre));
+}
 
 /* 7. .nojekyll para que Pages sirva todo tal cual. */
 writeFileSync(join(DOCS, '.nojekyll'), '');

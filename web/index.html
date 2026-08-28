@@ -12,18 +12,19 @@
 <body>
 
 <header class="cabecera">
-  <div class="marca">
-    <span class="logo">C</span>
+  <button class="marca" data-vista="explorar" title="Ir al inicio" aria-label="CIMARRÓN, ir al inicio">
+    <img class="logo" src="/assets/logo-emblema.png" alt="CIMARRÓN" />
     <div>
       <h1>CIMARRÓN</h1>
       <p>Comercio · Turismo · Agro del Casanare</p>
     </div>
-  </div>
+  </button>
   <nav class="nav-escritorio">
     <button data-vista="explorar" class="nav-boton activo">Explorar</button>
     <button data-vista="mapa" class="nav-boton">Mapa</button>
     <button data-vista="asistente" class="nav-boton">Asistente IA</button>
     <button data-vista="verificar" class="nav-boton">Sello</button>
+    <button data-vista="favoritos" class="nav-boton">❤ Favoritos</button>
     <button data-vista="solicitudes" class="nav-boton">Mis solicitudes</button>
     <button data-vista="admin" class="nav-boton nav-admin" hidden>Admin</button>
     <button data-vista="cuenta" class="nav-boton">Cuenta</button>
@@ -37,11 +38,12 @@
   <!-- ============ EXPLORAR ============ -->
   <section class="vista activa" id="vista-explorar">
     <div class="hero">
-      <div>
+      <div class="hero-texto">
         <h2>El llano, a un mensaje</h2>
         <p>Compra, reserva y agenda con los negocios no petroleros de Casanare. O dile al asistente qué necesitas y él lo hace por ti.</p>
+        <button class="boton-hero" data-vista="asistente">💬 Hablar con CIMARRÓN</button>
       </div>
-      <button class="boton-hero" data-vista="asistente">💬 Hablar con CIMARRÓN</button>
+      <img class="hero-logo" src="/assets/logo.png" alt="CIMARRÓN · Comercio, Turismo y Agro de Casanare" />
     </div>
 
     <div class="sectores" id="sectores">
@@ -111,11 +113,27 @@
     </div>
   </section>
 
+  <!-- ============ FAVORITOS ============ -->
+  <section class="vista" id="vista-favoritos">
+    <div class="tarjeta-centrada">
+      <h2>❤ Mis favoritos</h2>
+      <p class="texto-tenue">Guarda productos y servicios para pedirlos rápido después. Toca el corazón en cualquier ítem.</p>
+      <div id="lista-favoritos"><p class="texto-tenue">Cargando...</p></div>
+    </div>
+  </section>
+
   <!-- ============ CUENTA (registro / login) ============ -->
   <section class="vista" id="vista-cuenta">
     <div class="tarjeta-centrada" id="cuenta-sesion" hidden>
-      <h2>Tu cuenta</h2>
+      <div class="perfil-cabecera">
+        <span class="perfil-avatar" id="perfil-avatar">👤</span>
+        <div>
+          <h2 id="perfil-nombre">Tu cuenta</h2>
+          <span class="perfil-rol" id="perfil-rol"></span>
+        </div>
+      </div>
       <div id="cuenta-datos"></div>
+      <div id="perfil-contenido"></div>
       <button class="boton-secundario" id="cerrar-sesion">Cerrar sesión</button>
     </div>
 
@@ -128,20 +146,29 @@
       </div>
 
       <form class="formulario-flujo cuenta-form" id="form-login" data-tab="login">
-        <p class="texto-tenue">Entra con el correo o teléfono con que te registraste. Demo: <b>cliente@cimarron.co</b> o <b>admin@cimarron.co</b>.</p>
+        <p class="texto-tenue">Entra con tu correo o teléfono y tu contraseña.</p>
         <div class="campo"><label for="l-contacto">Correo o teléfono</label><input id="l-contacto" type="text" autocomplete="username"/></div>
+        <div class="campo"><label for="l-password">Contraseña</label><input id="l-password" type="password" autocomplete="current-password"/></div>
         <div class="error-form" id="err-login"></div>
         <button class="boton-principal" type="submit">Entrar</button>
+        <p class="texto-tenue" style="margin-top:10px">Cuentas demo:<br>
+          <b>admin@cimarron.co</b> · Cimarron.Admin.2026<br>
+          <b>cliente@cimarron.co</b> · Cimarron.Cliente.2026<br>
+          <b>negocio@cimarron.co</b> · Cimarron.Negocio.2026</p>
       </form>
 
       <form class="formulario-flujo cuenta-form" id="form-cliente" data-tab="cliente" hidden>
-        <p class="texto-tenue">Con tu nombre y un correo o teléfono quedas registrado. La dirección sirve para tus domicilios.</p>
-        <div class="campo"><label for="c-nombre">Nombre</label><input id="c-nombre" type="text"/></div>
+        <p class="texto-tenue">Regístrate con tus datos. El teléfono es tu contacto directo por WhatsApp con los negocios.</p>
+        <div class="campo"><label for="c-nombre">Nombres y apellidos</label><input id="c-nombre" type="text"/></div>
         <div class="dos-columnas">
           <div class="campo"><label for="c-email">Correo (opcional)</label><input id="c-email" type="email"/></div>
-          <div class="campo"><label for="c-telefono">Teléfono</label><input id="c-telefono" type="tel" inputmode="numeric"/></div>
+          <div class="campo"><label for="c-telefono">Teléfono de contacto</label><input id="c-telefono" type="tel" inputmode="numeric" placeholder="3123066149"/></div>
         </div>
-        <div class="campo"><label for="c-direccion">Dirección (para domicilios)</label><input id="c-direccion" type="text"/></div>
+        <div class="dos-columnas">
+          <div class="campo"><label for="c-direccion">Dirección de residencia</label><input id="c-direccion" type="text" placeholder="Carrera 20 # 12-45"/></div>
+          <div class="campo"><label for="c-ciudad">Ciudad (Casanare)</label><input id="c-ciudad" type="text" placeholder="Yopal, Aguazul, Villanueva..."/></div>
+        </div>
+        <div class="campo"><label for="c-password">Contraseña</label><input id="c-password" type="password" autocomplete="new-password"/></div>
         <div class="error-form" id="err-cliente"></div>
         <button class="boton-principal" type="submit">Crear mi cuenta</button>
       </form>
@@ -206,7 +233,7 @@
   <button data-vista="explorar" class="activo"><span>🧭</span>Explorar</button>
   <button data-vista="mapa"><span>🗺️</span>Mapa</button>
   <button data-vista="asistente"><span>💬</span>Asistente</button>
-  <button data-vista="solicitudes"><span>📋</span>Pedidos</button>
+  <button data-vista="favoritos"><span>❤</span>Favoritos</button>
   <button data-vista="admin" class="nav-admin" hidden><span>🛠️</span>Admin</button>
   <button data-vista="cuenta"><span>👤</span>Cuenta</button>
 </nav>

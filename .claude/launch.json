@@ -4,9 +4,8 @@
     {
       "name": "cimarron",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["servidor.mjs"],
-      "port": 8787,
-      "autoPort": true
+      "runtimeArgs": ["--env-file=.env", "servidor.mjs"],
+      "port": 8787
     }
   ]
 }

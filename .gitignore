@@ -11,6 +11,9 @@ api_key_anthopic.txt
 secret*.txt
 *service_role*
 service_role.txt
+
+# Logo original sin optimizar (se versionan solo las versiones de assets/)
+/logo.png
 .DS_Store
 Thumbs.db
 

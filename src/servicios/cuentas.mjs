@@ -12,21 +12,32 @@ import { repositorio } from '../datos/index.mjs';
 import { generarId } from '../nucleo/id.mjs';
 import { municipioCanonico, MUNICIPIOS } from '../nucleo/taxonomia.mjs';
 
-const sesion = (u) => ({ id: u.id, rol: u.rol, nombre: u.nombre, email: u.email, telefono: u.telefono, direccion: u.direccion });
+const sesion = (u) => ({ id: u.id, rol: u.rol, nombre: u.nombre, email: u.email, telefono: u.telefono, direccion: u.direccion, municipio: u.municipio });
 
-/** Registra (o recupera) un usuario cliente. Basta correo, nombre y teléfono. */
-export async function registrarCliente({ nombre, email, telefono, direccion }) {
+/** Registra (o recupera) un usuario cliente. Nombre + correo/teléfono; ciudad (Casanare) y clave. */
+export async function registrarCliente({ nombre, email, telefono, direccion, municipio, ciudad, password }) {
   const db = repositorio();
   if (!nombre || (!email && !telefono)) {
     return { error: 'Para registrarte necesito tu nombre y un correo o un teléfono.' };
   }
+  // La ciudad debe ser un municipio de Casanare (si se indica).
+  const ciudadTxt = ciudad || municipio;
+  let muni = null;
+  if (ciudadTxt) {
+    muni = municipioCanonico(ciudadTxt);
+    if (!muni) return { error: `"${ciudadTxt}" no es un municipio de Casanare.` };
+  }
   const existe = await db.buscarUsuario({ email, telefono });
   if (existe) {
     if (existe.rol !== 'cliente') return { error: 'Ese correo o teléfono ya está registrado con otro rol.' };
-    if (direccion && !existe.direccion) await db.actualizarUsuario(existe.id, { direccion });
-    return { ok: true, yaExistia: true, sesion: sesion(existe) };
+    const cambios = {};
+    if (direccion && !existe.direccion) cambios.direccion = direccion;
+    if (muni && !existe.municipio) cambios.municipio = muni;
+    if (password && !existe.password) cambios.password = password;
+    if (Object.keys(cambios).length) await db.actualizarUsuario(existe.id, cambios);
+    return { ok: true, yaExistia: true, sesion: sesion({ ...existe, ...cambios }) };
   }
-  const u = await db.crearUsuario({ rol: 'cliente', nombre, email, telefono, direccion });
+  const u = await db.crearUsuario({ rol: 'cliente', nombre, email, telefono, direccion, municipio: muni, password });
   return { ok: true, sesion: sesion(u) };
 }
 
@@ -98,12 +109,48 @@ export async function registrarNegocio(datos) {
   };
 }
 
-/** Login liviano por correo o teléfono. */
-export async function login({ email, telefono }) {
+/** Login por correo o teléfono. Si la cuenta tiene contraseña, la exige. */
+export async function login({ email, telefono, password }) {
   const db = repositorio();
   const u = await db.buscarUsuario({ email, telefono });
   if (!u) return { error: 'No encontramos una cuenta con ese correo o teléfono. Regístrate primero.' };
+  if (u.password) {
+    if (!password) return { error: 'Esta cuenta tiene contraseña. Escríbela para entrar.' };
+    if (String(password) !== String(u.password)) return { error: 'Contraseña incorrecta.' };
+  }
   return { ok: true, sesion: sesion(u) };
+}
+
+/**
+ * Datos del perfil según el rol, para la vista de perfil:
+ *   cliente → sus favoritos y sus solicitudes
+ *   negocio → sus negocios (con ítems) y las solicitudes que le llegan
+ *   admin   → resumen del panel
+ */
+export async function perfilDe(usuarioId) {
+  const db = repositorio();
+  const u = await db.obtenerUsuario(usuarioId);
+  if (!u) return { error: 'Sesión no válida.' };
+  const base = { usuario: sesion(u) };
+
+  if (u.rol === 'cliente') {
+    const favoritos = await db.listarFavoritos(u.id);
+    const solicitudes = u.telefono ? await db.listarSolicitudes({ telefono: u.telefono }) : [];
+    return { ...base, favoritos, solicitudes };
+  }
+  if (u.rol === 'negocio') {
+    const negocios = await db.listarNegocios({ incluirTodos: true, ownerId: u.id });
+    const conItems = [];
+    let solicitudes = [];
+    for (const n of negocios) {
+      const items = await db.listarItems({ negocioId: n.id, incluirTodos: true });
+      conItems.push({ ...n, items });
+      solicitudes = solicitudes.concat(await db.listarSolicitudes({ negocioId: n.id }));
+    }
+    return { ...base, negocios: conItems, solicitudes };
+  }
+  // admin
+  return { ...base, panel: await panelAdmin() };
 }
 
 /* ------------------------- administración ------------------------- */

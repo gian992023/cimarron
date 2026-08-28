@@ -81,11 +81,18 @@ export function crearRepositorioSupabase() {
   return {
     async listarNegocios(f = {}) {
       let q = c.from('negocios').select('*');
-      if (!f.incluirTodos) q = q.eq('estado', 'aprobado');
+      if (!f.incluirTodos && !f.estado) q = q.eq('estado', 'aprobado');
+      if (f.estado) q = q.eq('estado', f.estado);
       if (f.sector) q = q.eq('sector', f.sector);
+      if (f.ownerId) q = q.eq('owner_id', f.ownerId);
       const { data, error } = await q;
       if (error) throw error;
-      return (data || []).map(negDeFila);
+      let negs = (data || []).map(negDeFila);
+      if (f.busqueda) {
+        const b = String(f.busqueda).toLowerCase();
+        negs = negs.filter((n) => `${n.nombre} ${n.descripcion || ''} ${n.municipio || ''}`.toLowerCase().includes(b));
+      }
+      return negs;
     },
     async obtenerNegocio(id) {
       const { data } = await c.from('negocios').select('*').eq('id', id).single();

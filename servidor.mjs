@@ -38,7 +38,7 @@ await inicializarDatos(); // deja listo el origen (memoria o supabase) antes de 
 const { catalogo, crearSolicitudCompleta, verificarSelloCompleto } = await import(
   './src/servicios/flujo.mjs'
 );
-const { registrarCliente, registrarNegocio, login, panelAdmin, decidirNegocio } = await import(
+const { registrarCliente, registrarNegocio, login, panelAdmin, decidirNegocio, perfilDe } = await import(
   './src/servicios/cuentas.mjs'
 );
 const { formatearCOP, formatearNumeroSolicitud, formatearFechaHora } = await import(
@@ -155,6 +155,7 @@ const servidor = createServer(async (req, res) => {
       auth: metodoAuth() || 'sin_configurar',
       breb_llave: process.env.BREB_LLAVE || '(sin configurar)',
       qr_disponible: existsSync(join(RAIZ, 'assets', 'qr-breb.png')),
+      whatsapp_contacto: process.env.WHATSAPP_CONTACTO || '573123066149',
     });
   }
 
@@ -165,6 +166,7 @@ const servidor = createServer(async (req, res) => {
         sector: url.searchParams.get('sector') || undefined,
         tipo: url.searchParams.get('tipo') || undefined,
         categoria: url.searchParams.get('categoria') || undefined,
+        municipio: url.searchParams.get('municipio') || undefined,
         busqueda: url.searchParams.get('q') || undefined,
       });
       return responder(res, 200, { items });
@@ -218,6 +220,36 @@ const servidor = createServer(async (req, res) => {
   if (ruta === '/api/login' && req.method === 'POST') {
     const r = await login(await leerCuerpo(req));
     return responder(res, r.error ? 400 : 200, r);
+  }
+
+  // --- API: perfil del usuario (según su rol) ---
+  if (ruta === '/api/perfil' && req.method === 'GET') {
+    const uid = req.headers['x-usuario-id'];
+    if (!uid) return responder(res, 401, { error: 'Inicia sesión.' });
+    const r = await perfilDe(uid);
+    return responder(res, r.error ? 400 : 200, r);
+  }
+
+  // --- API: favoritos del usuario ---
+  if (ruta === '/api/favoritos') {
+    const uid = req.headers['x-usuario-id'];
+    if (!uid) return responder(res, 401, { error: 'Inicia sesión para usar favoritos.' });
+    const db = repositorio();
+    if (req.method === 'GET') {
+      return responder(res, 200, { favoritos: await db.listarFavoritos(uid) });
+    }
+    if (req.method === 'POST') {
+      const { itemId } = await leerCuerpo(req);
+      if (!itemId) return responder(res, 400, { error: 'Falta el ítem.' });
+      await db.agregarFavorito(uid, itemId);
+      return responder(res, 200, { ok: true, favoritos: await db.listarFavoritos(uid) });
+    }
+    if (req.method === 'DELETE') {
+      const { itemId } = await leerCuerpo(req);
+      if (!itemId) return responder(res, 400, { error: 'Falta el ítem.' });
+      await db.quitarFavorito(uid, itemId);
+      return responder(res, 200, { ok: true, favoritos: await db.listarFavoritos(uid) });
+    }
   }
 
   // --- API: administración (requiere sesión de admin) ---
