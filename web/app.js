@@ -293,6 +293,14 @@ async function cargarCatalogo() {
   pintarRejilla();
 }
 
+// Dispatcher del Explorar: si hay filtro de tipo (producto/servicio) muestra
+// ÍTEMS; si no, muestra la vitrina de NEGOCIOS. Así el filtro de productos y
+// servicios sí cambia la vista.
+async function cargarVista() {
+  if (estado.tipo) return cargarCatalogo();
+  return cargarNegocios();
+}
+
 // Llena el selector de categorías con las categorías presentes en el sector activo.
 async function poblarCategorias() {
   const sel = $('filtro-categoria');
@@ -495,13 +503,13 @@ document.querySelectorAll('.sector').forEach((b) => {
     estado.sector = b.dataset.sector;
     estado.categoria = '';
     await poblarCategorias();
-    cargarNegocios();
+    cargarVista();
   });
 });
 
 $('filtro-categoria').addEventListener('change', (e) => {
   estado.categoria = e.target.value;
-  cargarNegocios();
+  cargarVista();
 });
 
 document.querySelectorAll('#chips-tipo .chip').forEach((b) => {
@@ -509,7 +517,7 @@ document.querySelectorAll('#chips-tipo .chip').forEach((b) => {
     document.querySelector('#chips-tipo .chip.activo')?.classList.remove('activo');
     b.classList.add('activo');
     estado.tipo = b.dataset.tipo;
-    cargarNegocios();
+    cargarVista();
   });
 });
 
@@ -518,7 +526,7 @@ $('buscar').addEventListener('input', (e) => {
   clearTimeout(temporizadorBusqueda);
   temporizadorBusqueda = setTimeout(() => {
     estado.busqueda = e.target.value.trim();
-    cargarNegocios();
+    cargarVista();
   }, 250);
 });
 
@@ -1003,11 +1011,12 @@ let sesionActual = null;
 try { sesionActual = JSON.parse(localStorage.getItem(SESION_KEY) || 'null'); } catch { sesionActual = null; }
 
 async function apiCuenta(ruta, cuerpo, metodo = 'POST') {
-  if (ESTATICO) return { error: 'estatico' };
+  // En Pages (estático) las cuentas van al backend real (Render) vía AGENTE_BASE.
+  if (!AGENTE_DISPONIBLE) return { error: 'estatico' };
   const opt = { method: metodo, headers: { 'Content-Type': 'application/json' } };
   if (sesionActual) opt.headers['x-usuario-id'] = sesionActual.id;
   if (cuerpo) opt.body = JSON.stringify(cuerpo);
-  const r = await fetch(ruta, opt);
+  const r = await fetch(`${AGENTE_BASE}${ruta}`, opt);
   return { status: r.status, datos: await r.json() };
 }
 
@@ -1053,7 +1062,7 @@ document.querySelectorAll('#cuenta-tabs .chip').forEach((b) => {
   });
 });
 
-if (!ESTATICO) {
+if (AGENTE_DISPONIBLE) {
   // Login
   $('form-login').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1116,7 +1125,7 @@ const FLUJO_DE = (it) => (it.tipo === 'producto' ? 'pedido' : it.sector === 'tur
 const _prepararItem = (it) => ({ ...it, precio: it.precio || _cop(it.precioCop), flujo: it.flujo || FLUJO_DE(it) });
 
 async function cargarFavoritos() {
-  if (ESTATICO || !sesionActual) { favoritosSet = new Set(); return; }
+  if (!AGENTE_DISPONIBLE || !sesionActual) { favoritosSet = new Set(); return; }
   try {
     const { datos } = await apiCuenta('/api/favoritos', null, 'GET');
     favoritosSet = new Set((datos.favoritos || []).map((f) => f.id));
@@ -1125,7 +1134,7 @@ async function cargarFavoritos() {
 }
 
 async function toggleFavorito(itemId) {
-  if (ESTATICO) return;
+  if (!AGENTE_DISPONIBLE) return;
   if (!sesionActual) { alert('Inicia sesión para guardar favoritos.'); irA('cuenta'); return; }
   const activo = favoritosSet.has(itemId);
   const { datos } = await apiCuenta('/api/favoritos', { itemId }, activo ? 'DELETE' : 'POST');
@@ -1137,7 +1146,7 @@ async function toggleFavorito(itemId) {
 
 async function pintarFavoritos() {
   const caja = $('lista-favoritos');
-  if (ESTATICO) { caja.innerHTML = '<p class="texto-tenue">Los favoritos funcionan en la versión con servidor (demo local o Render).</p>'; return; }
+  if (!AGENTE_DISPONIBLE) { caja.innerHTML = '<p class="texto-tenue">Los favoritos funcionan con backend (demo local o Render).</p>'; return; }
   if (!sesionActual) { caja.innerHTML = '<p class="texto-tenue">Inicia sesión para ver y guardar tus favoritos.</p>'; return; }
   caja.innerHTML = '<p class="texto-tenue">Cargando...</p>';
   const { datos } = await apiCuenta('/api/favoritos', null, 'GET');
@@ -1173,7 +1182,7 @@ async function pintarFavoritos() {
 const AVATAR_ROL = { cliente: '👤', negocio: '🏪', admin: '🛠️' };
 
 async function cargarPerfil() {
-  if (ESTATICO || !sesionActual) return;
+  if (!AGENTE_DISPONIBLE || !sesionActual) return;
   $('perfil-avatar').textContent = AVATAR_ROL[sesionActual.rol] || '👤';
   $('perfil-nombre').textContent = sesionActual.nombre;
   $('perfil-rol').textContent = sesionActual.rol;
@@ -1240,7 +1249,7 @@ $('n-sector')?.addEventListener('change', poblarCategoriasNegocio);
 
 // Panel de admin
 async function cargarAdmin() {
-  if (ESTATICO || !sesionActual || sesionActual.rol !== 'admin') {
+  if (!AGENTE_DISPONIBLE || !sesionActual || sesionActual.rol !== 'admin') {
     $('admin-resumen').innerHTML = '<p class="texto-tenue">Entra como administrador para ver el panel.</p>';
     $('admin-pendientes').innerHTML = ''; $('admin-clientes').innerHTML = '';
     return;
@@ -1290,10 +1299,10 @@ async function decidir(id, decision) {
   try {
     const datos = await API.estado();
     if (datos.whatsapp_contacto) whatsappContacto = datos.whatsapp_contacto;
-    if (!datos.estatico && sesionActual) cargarFavoritos();
+    if (sesionActual) cargarFavoritos();
     if (datos.estatico) {
-      insignia.textContent = 'demo pública · IA en localhost';
-      insignia.className = 'estado';
+      insignia.textContent = AGENTE_DISPONIBLE ? 'IA activa · nube' : 'demo pública';
+      insignia.className = AGENTE_DISPONIBLE ? 'estado ok' : 'estado';
     } else if (!datos.llave_configurada) {
       insignia.textContent = 'asistente sin llave API (.env)';
       insignia.className = 'estado error';
@@ -1314,15 +1323,16 @@ burbuja(
 );
 pintarSugerencias();
 poblarCategorias();
-cargarNegocios();
+cargarVista();
 reflejarSesion();
 poblarCategoriasNegocio();
-if (ESTATICO) {
+// Solo si NO hay backend alcanzable (Pages sin apiBase) se deshabilitan las cuentas.
+if (!AGENTE_DISPONIBLE) {
   document.querySelectorAll('.cuenta-form').forEach((f) => {
     f.querySelectorAll('input,select,button').forEach((el) => (el.disabled = true));
   });
   const aviso = document.createElement('p');
   aviso.className = 'texto-tenue';
-  aviso.textContent = 'El registro y las cuentas funcionan en la versión con servidor o Supabase. En esta demo pública son solo de muestra.';
+  aviso.textContent = 'El registro y las cuentas necesitan el backend (demo local o Render).';
   $('cuenta-formularios').prepend(aviso);
 }
