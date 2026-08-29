@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CIMARRÓN · Comercio, Turismo y Agro de Casanare</title>
+  <meta name="description" content="CIMARRÓN conecta los negocios no petroleros de Casanare (comercio, turismo y agro) con sus clientes. Compra, reserva y agenda hablando con un agente de IA, paga por Bre-B y compra con confianza gracias al Sello Llanero, tu garantía contra estafas." />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -26,6 +27,7 @@
     <button data-vista="verificar" class="nav-boton">Sello</button>
     <button data-vista="favoritos" class="nav-boton">❤ Favoritos</button>
     <button data-vista="solicitudes" class="nav-boton">Mis solicitudes</button>
+    <button data-vista="manual" class="nav-boton">Ayuda</button>
     <button data-vista="admin" class="nav-boton nav-admin" hidden>Admin</button>
     <button data-vista="cuenta" class="nav-boton">Cuenta</button>
   </nav>
@@ -42,6 +44,7 @@
         <h2>El llano, a un mensaje</h2>
         <p>Compra, reserva y agenda con los negocios no petroleros de Casanare. O dile al asistente qué necesitas y él lo hace por ti.</p>
         <button class="boton-hero" data-vista="asistente">💬 Hablar con CIMARRÓN</button>
+        <button class="sello-trust" data-vista="verificar" title="Conoce el Sello Llanero">🛡️ Protegido con el Sello Llanero contra estafas</button>
       </div>
       <img class="hero-logo" src="/assets/logo.png" alt="CIMARRÓN · Comercio, Turismo y Agro de Casanare" />
     </div>
@@ -100,11 +103,20 @@
     </div>
   </section>
 
-  <!-- ============ VERIFICAR SELLO ============ -->
+  <!-- ============ SELLO LLANERO ============ -->
   <section class="vista" id="vista-verificar">
     <div class="tarjeta-centrada">
-      <h2>Verificar Sello Llanero</h2>
-      <p class="texto-tenue">Cada sello está encadenado criptográficamente al anterior. Si alguien alteró un registro, la verificación falla.</p>
+      <h2>🛡️ Sello Llanero</h2>
+      <p class="sello-lead">Es tu <b>garantía contra estafas</b>. Certifica que un producto es <b>de verdad de Casanare</b>, auténtico y con origen comprobado, para que compres con confianza aunque no conozcas al vendedor.</p>
+
+      <div class="sello-puntos">
+        <div class="sello-punto"><span>🌱</span><div><b>Origen certificado</b><p>Guardamos la vereda o finca de origen, la técnica y los materiales de cada producto sellado.</p></div></div>
+        <div class="sello-punto"><span>🔗</span><div><b>A prueba de manipulación</b><p>Cada sello se encadena con criptografía (SHA-256) al anterior. Si alguien cambia un solo dato, la cadena se rompe y queda a la vista.</p></div></div>
+        <div class="sello-punto"><span>👁️</span><div><b>Lo verificas tú mismo</b><p>Pega el código del sello aquí abajo y comprueba que es real. Sin intermediarios, sin tener que confiar a ciegas.</p></div></div>
+      </div>
+
+      <h3 class="sello-verif-titulo">Verificar un sello</h3>
+      <p class="texto-tenue">Escribe el código que aparece en el producto o en la publicación (formato LLA-XXXXXX).</p>
       <form id="formulario-sello" class="fila-form">
         <input id="codigo-sello" type="text" placeholder="LLA-XXXXXX" autocomplete="off" />
         <button type="submit">Verificar</button>
@@ -119,6 +131,39 @@
       <h2>❤ Mis favoritos</h2>
       <p class="texto-tenue">Guarda productos y servicios para pedirlos rápido después. Toca el corazón en cualquier ítem.</p>
       <div id="lista-favoritos"><p class="texto-tenue">Cargando...</p></div>
+    </div>
+  </section>
+
+  <!-- ============ MANUAL DE USO ============ -->
+  <section class="vista" id="vista-manual">
+    <div class="tarjeta-centrada manual">
+      <h2>¿Cómo funciona CIMARRÓN?</h2>
+      <p class="texto-tenue">CIMARRÓN conecta los negocios de Casanare (comercio, turismo y agro) con sus clientes. Puedes usar la app tú mismo o pedirle al asistente de IA que lo haga por ti, escribiéndole como en un chat.</p>
+
+      <div class="manual-bloque">
+        <h3>🛒 Si quieres comprar, reservar o agendar</h3>
+        <ol class="manual-pasos">
+          <li><b>Encuentra lo que buscas.</b> Explora la vitrina, filtra por sector, producto o servicio, o escríbele al <b>Asistente IA</b> (ej.: "quiero una bandeja llanera en Yopal").</li>
+          <li><b>Abre el negocio y elige.</b> Toca un negocio para ver su hoja con productos y precios reales. Guarda tus preferidos con el ❤.</li>
+          <li><b>Confirma tu solicitud.</b> Indica cantidad, fecha o lugar según sea un pedido, una reserva o un agendamiento.</li>
+          <li><b>Paga seguro.</b> Por <b>Bre-B</b> (escanea el QR desde Nequi, Bancolombia o tu banco y escribe la referencia) o contra entrega en comercio.</li>
+          <li><b>Sigue tu pedido.</b> En <b>Mis solicitudes</b> consultas el estado con el teléfono que registraste. El negocio te escribe por WhatsApp.</li>
+        </ol>
+      </div>
+
+      <div class="manual-bloque">
+        <h3>🏪 Si tienes un negocio</h3>
+        <ol class="manual-pasos">
+          <li><b>Regístrate por sector</b> en Cuenta → "Registrar mi negocio". Tu negocio queda en revisión.</li>
+          <li><b>Espera la aprobación</b> del administrador para aparecer en la plataforma.</li>
+          <li><b>Publica lo que ofreces.</b> El asistente te ayuda a redactar la descripción que vende y a ponerle precio.</li>
+          <li><b>Recibe y responde.</b> Te llegan las solicitudes y hablas directo con el cliente por WhatsApp.</li>
+        </ol>
+      </div>
+
+      <div class="manual-callout" data-vista="verificar" role="button" tabindex="0">
+        🛡️ <b>Compra sin miedo a estafas.</b> Busca el <b>Sello Llanero</b> en los productos: certifica origen y autenticidad, y lo puedes verificar tú mismo. <span class="manual-link">Conócelo →</span>
+      </div>
     </div>
   </section>
 
@@ -234,6 +279,7 @@
   <button data-vista="mapa"><span>🗺️</span>Mapa</button>
   <button data-vista="asistente"><span>💬</span>Asistente</button>
   <button data-vista="favoritos"><span>❤</span>Favoritos</button>
+  <button data-vista="manual"><span>❓</span>Ayuda</button>
   <button data-vista="admin" class="nav-admin" hidden><span>🛠️</span>Admin</button>
   <button data-vista="cuenta"><span>👤</span>Cuenta</button>
 </nav>

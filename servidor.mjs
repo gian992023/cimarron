@@ -32,7 +32,7 @@ function cargarEnv() {
 cargarEnv();
 
 // La importación va después de cargar .env: el agente lee variables al construirse.
-const { conversar, metodoAuth } = await import('./src/agente/index.mjs');
+const { conversar, metodoAuth, modeloActivo, proveedorIA } = await import('./src/agente/index.mjs');
 const { origenActual, repositorio, inicializarDatos } = await import('./src/datos/index.mjs');
 await inicializarDatos(); // deja listo el origen (memoria o supabase) antes de servir
 const { catalogo, crearSolicitudCompleta, verificarSelloCompleto } = await import(
@@ -148,7 +148,8 @@ const servidor = createServer(async (req, res) => {
     return responder(res, 200, {
       ok: true,
       proyecto: 'CIMARRÓN',
-      modelo: process.env.CIMARRON_MODELO || 'claude-sonnet-5',
+      modelo: modeloActivo(),
+      proveedor_ia: proveedorIA(),
       esfuerzo: process.env.CIMARRON_ESFUERZO || 'medium',
       origen_datos: origenActual(),
       llave_configurada: metodoAuth() !== null,
@@ -296,7 +297,7 @@ servidor.listen(PUERTO, () => {
   console.log('  CIMARRÓN  ·  Agente de IA para la cadena productiva del llano');
   console.log('  ─────────────────────────────────────────────────────────────');
   console.log(`  Interfaz:      http://localhost:${PUERTO}`);
-  console.log(`  Modelo:        ${process.env.CIMARRON_MODELO || 'claude-sonnet-5'}`);
+  console.log(`  Modelo:        ${modeloActivo()}  (proveedor: ${proveedorIA()})`);
   console.log(`  Origen datos:  ${origenActual()}`);
   console.log(`  Llave API:     ${listo ? 'configurada' : 'FALTA (revisa .env)'}`);
   console.log('');

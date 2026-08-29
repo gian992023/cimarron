@@ -829,3 +829,52 @@ input { font-family: inherit; }
 
 /* popup del mapa: mejor contraste (fondo oscuro) */
 .popup-negocio .sec { color: var(--texto-tenue); font-size: 11.5px; }
+
+/* ================= sello llanero (explicación) ================= */
+.sello-trust {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+  background: rgba(74, 140, 95, 0.14); border: 1px solid #2f5c3d; color: #8fd0a5;
+  border-radius: 999px; padding: 8px 14px; font-size: 12.5px; font-weight: 600;
+}
+.sello-trust:hover { background: rgba(74, 140, 95, 0.22); }
+.sello-lead { font-size: 15px; line-height: 1.6; color: var(--texto); margin: 4px 0 16px; }
+.sello-lead b { color: var(--ambar-fuerte); }
+.sello-puntos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.sello-punto {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: rgba(74, 140, 95, 0.08); border: 1px solid #2f5c3d;
+  border-radius: 12px; padding: 12px 14px;
+}
+.sello-punto > span { font-size: 22px; line-height: 1; flex-shrink: 0; }
+.sello-punto b { display: block; color: #8fd0a5; font-size: 14px; margin-bottom: 2px; }
+.sello-punto p { margin: 0; font-size: 12.5px; color: var(--texto-tenue); line-height: 1.5; }
+.sello-verif-titulo {
+  font-size: 14px; color: var(--ambar); text-transform: uppercase; letter-spacing: 0.04em;
+  border-top: 1px solid var(--borde); padding-top: 16px; margin: 4px 0 6px;
+}
+
+/* ================= manual de uso ================= */
+.manual { text-align: left; }
+.manual > .texto-tenue { font-size: 14px; }
+.manual-bloque { margin-top: 18px; }
+.manual-bloque h3 { font-size: 15px; color: var(--ambar); margin: 0 0 10px; }
+.manual-pasos { list-style: none; counter-reset: paso; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.manual-pasos li {
+  counter-increment: paso; position: relative; padding: 10px 12px 10px 46px;
+  background: var(--panel-alto); border: 1px solid var(--borde); border-radius: 10px;
+  font-size: 13.5px; line-height: 1.55; color: var(--texto);
+}
+.manual-pasos li::before {
+  content: counter(paso); position: absolute; left: 10px; top: 10px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--ambar), var(--ladrillo)); color: #1a1610;
+  font-weight: 800; font-size: 13px; display: grid; place-items: center;
+}
+.manual-pasos li b { color: #fbf6ee; }
+.manual-callout {
+  margin-top: 20px; background: rgba(74, 140, 95, 0.12); border: 1px solid #2f5c3d;
+  border-radius: 12px; padding: 14px 16px; font-size: 13.5px; line-height: 1.55; color: var(--texto); cursor: pointer;
+}
+.manual-callout b { color: #8fd0a5; }
+.manual-link { color: var(--ambar); font-weight: 700; white-space: nowrap; }
+.manual-callout:hover { background: rgba(74, 140, 95, 0.2); }
